@@ -229,10 +229,15 @@ export async function getAllUsers(request: Request) {
 export async function updateUserRole(request: Request, userId: string, newRole: 'admin' | 'user') {
   const { supabase } = await requireAdmin(request)
   
+  // upsert를 사용하여 존재하지 않으면 생성, 존재하면 업데이트
   const { data, error } = await supabase
     .from('user_roles')
-    .update({ role: newRole })
-    .eq('user_id', userId)
+    .upsert({ 
+      user_id: userId, 
+      role: newRole 
+    }, {
+      onConflict: 'user_id'
+    })
     .select()
     .single()
 
