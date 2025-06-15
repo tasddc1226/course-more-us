@@ -21,8 +21,6 @@ export async function action({ request }: ActionFunctionArgs) {
   const password = formData.get('password') as string
   const redirectTo = formData.get('redirectTo') as string || '/'
 
-  console.log('Login attempt:', { email, redirectTo })
-
   if (!email || !password) {
     return json({ error: '이메일과 비밀번호를 입력해주세요.' }, { status: 400 })
   }
@@ -36,11 +34,9 @@ export async function action({ request }: ActionFunctionArgs) {
   })
 
   if (error) {
-    console.log('Login error:', error)
     return json({ error: error.message }, { status: 400 })
   }
 
-  console.log('Login successful, redirecting to:', redirectTo)
   return redirect(redirectTo, {
     headers: response.headers,
   })

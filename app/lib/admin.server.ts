@@ -36,7 +36,7 @@ export async function isAdmin(request: Request): Promise<boolean> {
       .single()
     
     return !roleError && userRole && userRole.role === 'admin'
-  } catch {
+  } catch (error) {
     return false
   }
 }
