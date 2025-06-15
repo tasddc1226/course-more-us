@@ -185,4 +185,94 @@ export async function updatePlaceTimeSlots(
 
     if (error) throw error
   }
+}
+
+// ===== 유저 관리 함수들 =====
+
+// 모든 유저 조회 (관리자용) - 간소화된 버전
+export async function getAllUsers(request: Request) {
+  const { supabase, user: currentUser } = await requireAdmin(request)
+  
+  // user_roles 테이블에서 사용자 역할 정보 조회
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select(`
+      user_id,
+      role,
+      created_at,
+      updated_at
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  // 간소화된 사용자 정보 반환 (현재 사용자 정보는 실제 정보 표시)
+  const users = data.map((userRole) => {
+    const isCurrentUser = userRole.user_id === currentUser.id
+    
+    return {
+      id: userRole.user_id,
+      role: userRole.role,
+      email: isCurrentUser ? currentUser.email || 'Unknown' : `user-${userRole.user_id.slice(0, 8)}@example.com`,
+      created_at: userRole.created_at,
+      last_sign_in_at: isCurrentUser ? currentUser.last_sign_in_at : null,
+      user_metadata: isCurrentUser ? currentUser.user_metadata || {} : { name: `사용자 ${userRole.user_id.slice(0, 8)}` },
+      app_metadata: isCurrentUser ? currentUser.app_metadata || {} : { providers: ['email'] },
+      role_updated_at: userRole.updated_at
+    }
+  })
+
+  return users
+}
+
+// 사용자 역할 업데이트
+export async function updateUserRole(request: Request, userId: string, newRole: 'admin' | 'user') {
+  const { supabase } = await requireAdmin(request)
+  
+  const { data, error } = await supabase
+    .from('user_roles')
+    .update({ role: newRole })
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// 사용자 삭제 (소프트 삭제 - 실제로는 비활성화)
+export async function deleteUser(request: Request, userId: string) {
+  const { supabase } = await requireAdmin(request)
+  
+  // Supabase Auth에서 사용자 삭제
+  const { error } = await supabase.auth.admin.deleteUser(userId)
+  
+  if (error) throw error
+  
+  // user_roles에서도 제거
+  await supabase
+    .from('user_roles')
+    .delete()
+    .eq('user_id', userId)
+}
+
+// 사용자 통계 조회
+export async function getUserStats(request: Request) {
+  const { supabase } = await requireAdmin(request)
+  
+  const { data: roleStats, error: roleError } = await supabase
+    .from('user_roles')
+    .select('role')
+  
+  if (roleError) throw roleError
+  
+  const totalUsers = roleStats.length
+  const adminUsers = roleStats.filter(u => u.role === 'admin').length
+  const regularUsers = roleStats.filter(u => u.role === 'user').length
+  
+  return {
+    totalUsers,
+    adminUsers,
+    regularUsers
+  }
 } 

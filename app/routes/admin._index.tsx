@@ -191,6 +191,27 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
+            to="/admin/users"
+            className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
+          >
+            <div className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-2xl">👥</span>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-medium text-gray-900">유저 관리</h3>
+                  <p className="text-sm text-gray-500">
+                    사용자 역할 및 계정 관리
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link
             to="/admin/analytics"
             className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
           >
