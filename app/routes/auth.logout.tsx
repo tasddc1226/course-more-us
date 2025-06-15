@@ -2,9 +2,12 @@ import { redirect, type ActionFunctionArgs } from '@remix-run/node'
 import { createSupabaseServerClient } from '~/lib/supabase.server'
 
 export async function action({ request }: ActionFunctionArgs) {
-  const supabase = createSupabaseServerClient(request)
+  const response = new Response()
+  const supabase = createSupabaseServerClient(request, response)
   await supabase.auth.signOut()
-  return redirect('/auth/login')
+  return redirect('/', {
+    headers: response.headers,
+  })
 }
 
 export async function loader() {

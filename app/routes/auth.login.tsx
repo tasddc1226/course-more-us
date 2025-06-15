@@ -1,5 +1,5 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node'
-import { Form, useActionData, Link } from '@remix-run/react'
+import { Form, useActionData, useLoaderData, useNavigation, Link } from '@remix-run/react'
 import { createSupabaseServerClient } from '~/lib/supabase.server'
 import { getUser } from '~/lib/auth.server'
 
@@ -8,19 +8,27 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (user) {
     return redirect('/')
   }
-  return json({})
+  
+  const url = new URL(request.url)
+  const redirectTo = url.searchParams.get('redirectTo') || '/'
+  
+  return json({ redirectTo })
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  const redirectTo = formData.get('redirectTo') as string || '/'
+
+  console.log('Login attempt:', { email, redirectTo })
 
   if (!email || !password) {
     return json({ error: '이메일과 비밀번호를 입력해주세요.' }, { status: 400 })
   }
 
-  const supabase = createSupabaseServerClient(request)
+  const response = new Response()
+  const supabase = createSupabaseServerClient(request, response)
   
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -28,14 +36,21 @@ export async function action({ request }: ActionFunctionArgs) {
   })
 
   if (error) {
+    console.log('Login error:', error)
     return json({ error: error.message }, { status: 400 })
   }
 
-  return redirect('/')
+  console.log('Login successful, redirecting to:', redirectTo)
+  return redirect(redirectTo, {
+    headers: response.headers,
+  })
 }
 
 export default function Login() {
   const actionData = useActionData<typeof action>()
+  const { redirectTo } = useLoaderData<typeof loader>()
+  const navigation = useNavigation()
+  const isSubmitting = navigation.state === 'submitting'
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -55,6 +70,7 @@ export default function Login() {
           </p>
         </div>
         <Form className="mt-8 space-y-6" method="post">
+          <input type="hidden" name="redirectTo" value={redirectTo} />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -95,9 +111,10 @@ export default function Login() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isSubmitting}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              로그인
+              {isSubmitting ? '로그인 중...' : '로그인'}
             </button>
           </div>
         </Form>

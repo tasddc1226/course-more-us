@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { type Database } from '~/types/database.types'
 
-export function createSupabaseServerClient(request: Request) {
+export function createSupabaseServerClient(request: Request, response?: Response) {
   const cookies = request.headers.get('Cookie') || ''
 
   return createServerClient<Database>(
@@ -17,8 +17,11 @@ export function createSupabaseServerClient(request: Request) {
             .map(([name, value]) => ({ name, value: decodeURIComponent(value || '') }))
         },
         setAll(cookiesToSet) {
-          // 서버에서는 쿠키 설정을 직접 하지 않음
-          // 대신 응답 헤더에서 설정해야 함
+          if (response) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.headers.append('Set-Cookie', `${name}=${encodeURIComponent(value)}; ${Object.entries(options || {}).map(([key, val]) => `${key}=${val}`).join('; ')}`)
+            })
+          }
         },
       },
     },
