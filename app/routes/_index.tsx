@@ -108,7 +108,23 @@ export default function Index() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-4">
-            <span className="text-gray-700">안녕하세요, {user.email}님!</span>
+            <div className="flex items-center space-x-3">
+              {user.user_metadata?.avatar_url && (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt="프로필"
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+              <span className="text-gray-700">
+                안녕하세요, {user.user_metadata?.full_name || user.email}님!
+              </span>
+              {user.app_metadata?.provider === 'kakao' && (
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                  카카오
+                </span>
+              )}
+            </div>
             {userIsAdmin && (
               <Link
                 to="/admin"

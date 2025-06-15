@@ -1,6 +1,22 @@
 import { createBrowserClient } from '@supabase/ssr'
-import { type Database } from '~/types/database.types'
 
+export function createSupabaseClient() {
+  return createBrowserClient(
+    window.ENV.SUPABASE_URL,
+    window.ENV.SUPABASE_ANON_KEY,
+    {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+      },
+    }
+  )
+}
+
+// 전역 타입 선언
 declare global {
   interface Window {
     ENV: {
@@ -8,11 +24,4 @@ declare global {
       SUPABASE_ANON_KEY: string
     }
   }
-}
-
-export function createSupabaseBrowserClient() {
-  return createBrowserClient<Database>(
-    window.ENV.SUPABASE_URL,
-    window.ENV.SUPABASE_ANON_KEY
-  )
 } 
