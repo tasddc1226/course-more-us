@@ -44,6 +44,11 @@ export default function Login() {
   const [searchParams] = useSearchParams()
   const oauthError = searchParams.get('error')
   const [isKakaoLoading, setIsKakaoLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  // 로그인 버튼 활성화 조건
+  const isLoginButtonEnabled = email.trim() !== '' && password.trim() !== ''
 
   const handleKakaoLogin = async () => {
     if (isKakaoLoading) return // 중복 클릭 방지
@@ -119,6 +124,8 @@ export default function Login() {
             <input
               type="email"
               name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="이메일 아이디"
               required
               className="w-full px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
@@ -129,6 +136,8 @@ export default function Login() {
             <input
               type="password"
               name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="비밀번호"
               required
               className="w-full px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
@@ -151,7 +160,12 @@ export default function Login() {
           {/* 로그인 버튼 */}
           <button
             type="submit"
-            className="w-full bg-gray-400 text-white py-4 rounded-2xl font-medium hover:bg-gray-500 transition-colors"
+            disabled={!isLoginButtonEnabled}
+            className={`w-full py-4 rounded-2xl font-medium transition-all duration-300 ${
+              isLoginButtonEnabled
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
           >
             로그인
           </button>
