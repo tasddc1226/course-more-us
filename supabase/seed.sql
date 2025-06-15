@@ -84,4 +84,10 @@ INSERT INTO place_time_slots (place_id, time_slot_id, priority) VALUES
 -- 한강공원 (모든 시간대 가능, 오후가 가장 좋음)
 ((SELECT id FROM places WHERE name = '한강공원 뚝섬유원지'), (SELECT id FROM time_slots WHERE slug = 'afternoon'), 1),
 ((SELECT id FROM places WHERE name = '한강공원 뚝섬유원지'), (SELECT id FROM time_slots WHERE slug = 'evening'), 2),
-((SELECT id FROM places WHERE name = '한강공원 뚝섬유원지'), (SELECT id FROM time_slots WHERE slug = 'lunch'), 3); 
+((SELECT id FROM places WHERE name = '한강공원 뚝섬유원지'), (SELECT id FROM time_slots WHERE slug = 'lunch'), 3);
+
+-- 관리자 사용자 역할 설정
+-- 주의: 실제 사용자가 회원가입한 후 해당 user_id로 수동 업데이트 필요
+-- 예시: 특정 이메일의 사용자를 관리자로 설정하려면 아래 쿼리 실행
+-- INSERT INTO user_roles (user_id, role) 
+-- SELECT id, 'admin' FROM auth.users WHERE email = 'admin@example.com'; 

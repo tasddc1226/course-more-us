@@ -1,13 +1,44 @@
 import { requireAuth } from './auth.server'
+import { redirect } from "@remix-run/node"
 import type { Database } from '~/types/database.types'
 
 type PlaceInsert = Database['public']['Tables']['places']['Insert']
 type PlaceUpdate = Database['public']['Tables']['places']['Update']
 
-// 관리자 권한 확인 (현재는 로그인된 사용자만, 나중에 role 기반으로 확장)
+// 관리자 권한 확인
 export async function requireAdmin(request: Request) {
   const { user, supabase } = await requireAuth(request)
+  
+  // 사용자 역할 확인
+  const { data: userRole, error: roleError } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .single()
+  
+  if (roleError || !userRole || userRole.role !== 'admin') {
+    throw redirect("/?error=unauthorized")
+  }
+  
   return { user, supabase }
+}
+
+// 관리자 권한 확인 (boolean 반환)
+export async function isAdmin(request: Request): Promise<boolean> {
+  try {
+    const { user, supabase } = await requireAuth(request)
+    
+    // 사용자 역할 확인
+    const { data: userRole, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+    
+    return !roleError && userRole && userRole.role === 'admin'
+  } catch {
+    return false
+  }
 }
 
 // 모든 장소 조회 (관리자용 - 비활성 장소도 포함)

@@ -3,6 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, Link, Form } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getRecommendations } from "~/lib/recommendation.server";
+import { isAdmin } from "~/lib/admin.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,15 +17,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   if (user) {
     // 로그인한 사용자에게는 추천 폼 데이터 제공
-    const [regions, timeSlots] = await Promise.all([
+    const [regions, timeSlots, userIsAdmin] = await Promise.all([
       getRegions(request),
-      getTimeSlots(request)
+      getTimeSlots(request),
+      isAdmin(request)
     ]);
     
-    return json({ user, regions, timeSlots });
+    return json({ user, regions, timeSlots, isAdmin: userIsAdmin });
   }
   
-  return json({ user, regions: [], timeSlots: [] });
+  return json({ user, regions: [], timeSlots: [], isAdmin: false });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -66,7 +68,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-  const { user, regions, timeSlots } = useLoaderData<typeof loader>();
+  const { user, regions, timeSlots, isAdmin: userIsAdmin } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   if (!user) {
@@ -107,12 +109,14 @@ export default function Index() {
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-4">
             <span className="text-gray-700">안녕하세요, {user.email}님!</span>
-            <Link
-              to="/admin"
-              className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors"
-            >
-              관리자
-            </Link>
+            {userIsAdmin && (
+              <Link
+                to="/admin"
+                className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors"
+              >
+                관리자
+              </Link>
+            )}
             <Form method="post" action="/auth/logout">
               <button
                 type="submit"
