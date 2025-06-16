@@ -4,6 +4,9 @@ import { createSupabaseServerClient } from '~/lib/supabase.server'
 import { getUser } from '~/lib/auth.server'
 import { createSupabaseClient } from '~/lib/supabase.client'
 import { useState, useEffect } from 'react'
+import { Button, Input } from '~/components/ui'
+import { ROUTES } from '~/constants/routes'
+import { isValidEmail, isValidPassword } from '~/utils/validation'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request)
@@ -16,7 +19,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   // 이용약관 동의하지 않고 접근하면 약관 페이지로 리다이렉트
   if (!termsAgreed) {
-    return redirect('/auth/terms?next=' + encodeURIComponent('/auth/signup'));
+    return redirect(`${ROUTES.TERMS}?next=${encodeURIComponent(ROUTES.SIGNUP)}`);
   }
   
   return json({ termsAgreed });
@@ -36,12 +39,16 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: '모든 필드를 입력해주세요.' }, { status: 400 })
   }
 
-  if (password !== confirmPassword) {
-    return json({ error: '비밀번호가 일치하지 않습니다.' }, { status: 400 })
+  if (!isValidEmail(email)) {
+    return json({ error: '올바른 이메일 형식을 입력해주세요.' }, { status: 400 })
   }
 
-  if (password.length < 6) {
-    return json({ error: '비밀번호는 6자 이상이어야 합니다.' }, { status: 400 })
+  if (!isValidPassword(password)) {
+    return json({ error: '비밀번호는 8자 이상이며, 대소문자와 숫자를 포함해야 합니다.' }, { status: 400 })
+  }
+
+  if (password !== confirmPassword) {
+    return json({ error: '비밀번호가 일치하지 않습니다.' }, { status: 400 })
   }
 
   const response = new Response()
@@ -85,7 +92,7 @@ export default function Signup() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer)
-            navigate('/auth/login')
+            navigate(ROUTES.LOGIN)
             return 0
           }
           return prev - 1
@@ -138,7 +145,7 @@ export default function Signup() {
           <p className="mt-2 text-center text-sm text-gray-600">
             또는{' '}
             <Link
-              to="/auth/login"
+              to={ROUTES.LOGIN}
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
               기존 계정으로 로그인
@@ -146,49 +153,37 @@ export default function Signup() {
           </p>
         </div>
         <Form className="mt-8 space-y-6" method="post">
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email-address" className="sr-only">
-                이메일
-              </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="이메일 주소"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                비밀번호
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="비밀번호"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirmPassword" className="sr-only">
-                비밀번호 확인
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="비밀번호 확인"
-              />
-            </div>
+          <div className="space-y-4">
+            <Input
+              id="email-address"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="이메일 주소"
+              label="이메일"
+            />
+            
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              placeholder="비밀번호 (8자 이상, 대소문자+숫자)"
+              label="비밀번호"
+              helperText="8자 이상, 대소문자와 숫자를 포함해야 합니다"
+            />
+            
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              placeholder="비밀번호 확인"
+              label="비밀번호 확인"
+            />
           </div>
 
           {actionData && 'error' in actionData && (
@@ -206,14 +201,13 @@ export default function Signup() {
             </div>
           )}
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              회원가입
-            </button>
-          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+          >
+            회원가입
+          </Button>
         </Form>
 
         <div className="mt-6">

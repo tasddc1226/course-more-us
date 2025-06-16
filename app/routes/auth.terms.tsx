@@ -3,6 +3,9 @@ import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
 import { createInitialAgreements } from "~/lib/agreements.server";
+import { Button } from "~/components/ui";
+import { ROUTES } from "~/constants/routes";
+import { AGREEMENT_TYPES, AGREEMENT_LABELS } from "~/constants/agreements";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -43,7 +46,7 @@ export async function action({ request }: ActionFunctionArgs) {
     } catch (agreementError) {
       console.error('동의 정보 저장 실패:', agreementError)
     }
-    return redirect('/');
+    return redirect(ROUTES.HOME);
   } else if (provider === 'kakao') {
     // 카카오 로그인의 경우 OAuth 처리 라우트로 이동
     const oauthUrl = new URL('/auth/oauth/kakao', request.url);
@@ -114,6 +117,7 @@ export default function AuthTerms() {
                 checked={allAgreed}
                 onChange={(e) => handleAllAgreedChange(e.target.checked)}
                 className="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                aria-label="전체 동의하기"
               />
               <span className="ml-3 text-lg font-semibold text-gray-900">
                 전체 동의하기
@@ -132,15 +136,17 @@ export default function AuthTerms() {
                   checked={termsAgreed}
                   onChange={(e) => setTermsAgreed(e.target.checked)}
                   className="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 mt-0.5"
+                  aria-label="서비스 이용약관 동의"
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-900 font-medium">
-                      [필수] 서비스 이용약관 동의
+                      {AGREEMENT_LABELS[AGREEMENT_TYPES.SERVICE_TERMS]}
                     </span>
                     <Link 
-                      to="/terms" 
+                      to={ROUTES.SERVICE_TERMS} 
                       target="_blank"
+                      rel="noreferrer"
                       className="text-sm text-purple-600 hover:text-purple-800 underline"
                     >
                       보기

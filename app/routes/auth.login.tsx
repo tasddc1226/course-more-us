@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { createSupabaseServerClient } from '~/lib/supabase.server'
 import { getUser } from '~/lib/auth.server'
 import { createSupabaseClient } from '~/lib/supabase.client'
+import { Button, Input } from '~/components/ui'
+import { ROUTES } from '~/constants/routes'
+import { isValidEmail } from '~/utils/validation'
 
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -23,6 +26,10 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: '이메일과 비밀번호를 입력해주세요.' }, { status: 400 })
   }
 
+  if (!isValidEmail(email)) {
+    return json({ error: '올바른 이메일 형식을 입력해주세요.' }, { status: 400 })
+  }
+
   const response = new Response()
   const supabase = createSupabaseServerClient(request, response)
   
@@ -35,7 +42,7 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: error.message }, { status: 400 })
   }
 
-  return redirect('/', {
+  return redirect(ROUTES.HOME, {
     headers: response.headers,
   })
 }
@@ -101,29 +108,25 @@ export default function Login() {
 
         {/* 로그인 폼 */}
         <Form method="post" className="space-y-4">
-          <div>
-            <input
-              type="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일 아이디"
-              required
-              className="w-full px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-            />
-          </div>
+          <Input
+            type="email"
+            name="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일 아이디"
+            required
+            className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+          />
           
-          <div>
-            <input
-              type="password"
-              name="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호"
-              required
-              className="w-full px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-            />
-          </div>
+          <Input
+            type="password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호"
+            required
+            className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+          />
 
           {/* 에러 메시지 */}
           {actionData?.error && (
@@ -144,7 +147,7 @@ export default function Login() {
           )}
 
           {/* 로그인 버튼 */}
-          <button
+          <Button
             type="submit"
             disabled={!isLoginButtonEnabled}
             className={`w-full py-4 rounded-2xl font-medium transition-all duration-300 ${
@@ -154,7 +157,7 @@ export default function Login() {
             }`}
           >
             로그인
-          </button>
+          </Button>
         </Form>
 
         {/* 이메일/비밀번호 찾기 및 회원가입 링크 */}
@@ -162,7 +165,7 @@ export default function Login() {
           <Link to="/auth/forgot-password" className="text-gray-600 hover:text-gray-800">
             이메일 / 비밀번호 찾기
           </Link>
-          <Link to="/auth/signup" className="text-gray-600 hover:text-gray-800">
+          <Link to={ROUTES.SIGNUP} className="text-gray-600 hover:text-gray-800">
             회원가입
           </Link>
         </div>
