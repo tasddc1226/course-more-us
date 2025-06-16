@@ -201,17 +201,19 @@ export default function Index() {
 
             {/* 시간대 선택 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">
+              <label htmlFor="timeSlots" className="block text-sm font-medium text-gray-700 mb-4">
                 원하는 시간대 <span className="text-red-500">*</span>
                 <span className="text-sm text-gray-500 ml-2">(복수 선택 가능)</span>
               </label>
               <div className="grid grid-cols-2 gap-4">
                 {timeSlots.map((timeSlot) => (
-                  <label key={timeSlot.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <div key={timeSlot.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                     <input
-                      type="checkbox"
+                      id={`timeSlot-${timeSlot.id}`}
+                      type="checkbox" 
                       name="timeSlots"
                       value={timeSlot.id}
+                      aria-label={`${timeSlot.name} ${timeSlot.start_time}-${timeSlot.end_time}`}
                       className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                     />
                     <div className="flex-1">
@@ -220,7 +222,7 @@ export default function Index() {
                         {timeSlot.start_time} - {timeSlot.end_time}
                       </div>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -272,11 +274,11 @@ export default function Index() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
                           <span className="text-yellow-400 mr-1">⭐</span>
-                          <span className="text-sm font-medium">{place.rating.toFixed(1)}</span>
+                          <span className="text-sm font-medium">{place.rating?.toFixed(1) || '-'}</span>
                         </div>
                         <div className="flex items-center">
                           <span className="text-gray-400 mr-1">💰</span>
-                          <span className="text-sm">{'$'.repeat(place.price_range)}</span>
+                          <span className="text-sm">{place.price_range ? '$'.repeat(place.price_range) : '-'}</span>
                         </div>
                       </div>
                       
