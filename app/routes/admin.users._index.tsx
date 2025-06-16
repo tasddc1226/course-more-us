@@ -254,7 +254,7 @@ export default function AdminUsers() {
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(user.created_at)}
+                      {user.created_at ? formatDate(user.created_at) : '날짜 없음'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : '로그인 기록 없음'}

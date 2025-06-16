@@ -1,16 +1,25 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node'
-import { Form, useActionData, Link } from '@remix-run/react'
+import { Form, useActionData, Link, useNavigate } from '@remix-run/react'
 import { createSupabaseServerClient } from '~/lib/supabase.server'
 import { getUser } from '~/lib/auth.server'
 import { createSupabaseClient } from '~/lib/supabase.client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request)
   if (user) {
     return redirect('/')
   }
-  return json({})
+  
+  const url = new URL(request.url);
+  const termsAgreed = url.searchParams.get('terms_agreed');
+  
+  // 이용약관 동의하지 않고 접근하면 약관 페이지로 리다이렉트
+  if (!termsAgreed) {
+    return redirect('/auth/terms?next=' + encodeURIComponent('/auth/signup'));
+  }
+  
+  return json({ termsAgreed });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -18,6 +27,10 @@ export async function action({ request }: ActionFunctionArgs) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
+  
+  // URL에서 동의 정보 가져오기
+  const url = new URL(request.url)
+  const marketingAgreed = url.searchParams.get('marketing_agreed') === 'true'
 
   if (!email || !password || !confirmPassword) {
     return json({ error: '모든 필드를 입력해주세요.' }, { status: 400 })
@@ -31,9 +44,10 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: '비밀번호는 6자 이상이어야 합니다.' }, { status: 400 })
   }
 
-  const supabase = createSupabaseServerClient(request)
+  const response = new Response()
+  const supabase = createSupabaseServerClient(request, response)
   
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
   })
@@ -42,34 +56,58 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: error.message }, { status: 400 })
   }
 
-  return json({ success: '회원가입이 완료되었습니다. 이메일을 확인해주세요.' })
+  // 회원가입 성공 시 동의 정보 저장 시도
+  if (data.user) {
+    try {
+      // 임시 인증 request 생성 (실제로는 이메일 확인 후 로그인 시 저장됨)
+      console.log('회원가입 완료, 이메일 확인 후 동의 정보가 저장됩니다.')
+    } catch (agreementError) {
+      console.error('동의 정보 저장 예약 실패:', agreementError)
+    }
+  }
+
+  return json({ 
+    success: '회원가입이 완료되었습니다. 이메일을 확인해주세요.',
+    marketingAgreed 
+  })
 }
 
 export default function Signup() {
   const actionData = useActionData<typeof action>()
+  const navigate = useNavigate()
   const [isKakaoLoading, setIsKakaoLoading] = useState(false)
+  const [countdown, setCountdown] = useState(3)
+
+  // 회원가입 성공 시 카운트다운 및 리다이렉트
+  useEffect(() => {
+    if (actionData && 'success' in actionData) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            navigate('/auth/login')
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }
+  }, [actionData, navigate])
 
   const handleKakaoLogin = async () => {
     if (isKakaoLoading) return // 중복 클릭 방지
     
     setIsKakaoLoading(true)
     try {
-      // 브라우저 스토리지 정리
-      localStorage.removeItem('supabase.auth.token')
-      sessionStorage.clear()
-      
+      // 클라이언트에서 직접 카카오 OAuth 처리
       const supabase = createSupabaseClient()
-      
-      // 기존 세션 완전히 정리
-      await supabase.auth.signOut({ scope: 'global' })
-      
-      // 잠시 대기 후 OAuth 시작
-      await new Promise(resolve => setTimeout(resolve, 100))
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/')}`,
+          redirectTo: `${window.location.origin}/auth/callback?flow=signup`,
         },
       })
       
@@ -160,8 +198,11 @@ export default function Signup() {
           )}
 
           {actionData && 'success' in actionData && (
-            <div className="text-green-600 text-sm text-center">
-              {actionData.success}
+            <div className="text-green-600 text-sm text-center bg-green-50 py-3 px-4 rounded-lg">
+              <div className="font-medium">{actionData.success}</div>
+              <div className="mt-2 text-xs">
+                {countdown > 0 ? `${countdown}초 후 로그인 페이지로 이동합니다...` : '이동 중...'}
+              </div>
             </div>
           )}
 

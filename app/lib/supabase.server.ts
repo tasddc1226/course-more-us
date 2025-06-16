@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { type Database } from '~/types/database.types'
 
 export function createSupabaseServerClient(request: Request, response?: Response) {
@@ -26,4 +27,19 @@ export function createSupabaseServerClient(request: Request, response?: Response
       },
     },
   )
-} 
+}
+
+/**
+ * 서버 환경에서 관리자 권한으로 Supabase와 상호작용하기 위한 클라이언트입니다.
+ * RLS 정책을 우회해야 하는 경우에만 사용해야 합니다.
+ */
+export const supabaseAdmin = createClient<Database>(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  },
+) 

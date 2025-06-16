@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '~/lib/supabase.server'
 import { getUser } from '~/lib/auth.server'
 import { createSupabaseClient } from '~/lib/supabase.client'
 
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request)
   if (user) {
@@ -55,36 +56,13 @@ export default function Login() {
     
     setIsKakaoLoading(true)
     try {
-      // 모든 OAuth 관련 스토리지 완전 정리
-      const keysToRemove = [
-        'supabase.auth.token',
-        'sb-access-token',
-        'sb-refresh-token',
-        'supabase-auth-token',
-        'sb-kowavokdpjawkkkxnzib-auth-token',
-        'sb-kowavokdpjawkkkxnzib-auth-token-code-verifier'
-      ]
-      
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key)
-        sessionStorage.removeItem(key)
-      })
-      
-      // 세션 스토리지 완전 정리
-      sessionStorage.clear()
-      
+      // 클라이언트에서 직접 카카오 OAuth 처리
       const supabase = createSupabaseClient()
-      
-      // 기존 세션 완전히 정리
-      await supabase.auth.signOut({ scope: 'global' })
-      
-      // 잠시 대기하여 상태 안정화
-      await new Promise(resolve => setTimeout(resolve, 200))
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?flow=login`,
         },
       })
       
@@ -94,6 +72,9 @@ export default function Login() {
         setIsKakaoLoading(false)
         return
       }
+      
+      // OAuth 리다이렉트가 성공적으로 시작되면 로딩 상태는 유지
+      console.log('카카오 로그인 시작됨')
       
     } catch (error) {
       console.error('카카오 로그인 예외:', error)
@@ -153,7 +134,12 @@ export default function Login() {
 
           {oauthError && (
             <div className="text-red-500 text-sm text-center bg-red-50 py-2 px-4 rounded-lg">
-              OAuth 로그인 오류: {oauthError}
+              {oauthError === 'session_expired' 
+                ? '세션이 만료되었습니다. 다시 로그인해주세요.'
+                : oauthError === 'callback_error'
+                ? '로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.'
+                : `OAuth 로그인 오류: ${oauthError}`
+              }
             </div>
           )}
 
