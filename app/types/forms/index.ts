@@ -31,4 +31,35 @@ export interface PlaceFormData {
   time_slots: string[];
   images: string[];
   tags: string[];
+}
+
+export interface Place {
+  id: number;
+  name: string;
+  description: string | null;
+  address: string;
+  latitude: number;
+  longitude: number;
+  phone?: string;
+  website?: string;
+  rating: number;
+  price_level: number;
+  is_partnership: boolean;
+  categories?: {
+    name: string;
+    icon?: string;
+  };
+  place_images?: Array<{
+    image_url: string;
+  }>;
+  tags?: string[];
+}
+
+export interface RecommendationResponse {
+  places: Place[];
+  requestInfo: {
+    regionName: string;
+    date: string;
+    timeSlots: string[];
+  };
 } 

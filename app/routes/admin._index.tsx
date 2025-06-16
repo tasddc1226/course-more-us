@@ -2,6 +2,8 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, Link, Form } from "@remix-run/react";
 import { requireAdmin, getAllPlaces } from "~/lib/admin.server";
+import { Button } from "~/components/ui";
+import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
   return [
@@ -37,18 +39,19 @@ export default function AdminDashboard() {
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">관리자: {user.email}</span>
               <Link
-                to="/"
+                to={ROUTES.HOME}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
               >
                 사용자 페이지로
               </Link>
-              <Form method="post" action="/auth/logout">
-                <button
+              <Form method="post" action={ROUTES.LOGOUT}>
+                <Button
                   type="submit"
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+                  variant="danger"
+                  size="sm"
                 >
                   로그아웃
-                </button>
+                </Button>
               </Form>
             </div>
           </div>
@@ -128,7 +131,7 @@ export default function AdminDashboard() {
         {/* 메뉴 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link
-            to="/admin/places"
+            to={ROUTES.ADMIN_PLACES}
             className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
           >
             <div className="p-6">
@@ -191,7 +194,7 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
-            to="/admin/users"
+            to={ROUTES.ADMIN_USERS}
             className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
           >
             <div className="p-6">
@@ -202,35 +205,52 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">유저 관리</h3>
+                  <h3 className="text-lg font-medium text-gray-900">사용자 관리</h3>
                   <p className="text-sm text-gray-500">
-                    사용자 역할 및 계정 관리
+                    사용자 역할, 권한 관리
                   </p>
                 </div>
               </div>
             </div>
           </Link>
+        </div>
 
-          <Link
-            to="/admin/analytics"
-            className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow"
-          >
-            <div className="p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-2xl">📊</span>
+        {/* 최근 활동 */}
+        <div className="mt-8">
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                빠른 액션
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900">새 장소 추가</h4>
+                    <p className="text-sm text-gray-500">데이트 코스에 새로운 장소를 추가합니다</p>
+                  </div>
+                  <Link to={ROUTES.ADMIN_PLACES_NEW}>
+                    <Button variant="primary">
+                      장소 추가
+                    </Button>
+                  </Link>
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900">전체 장소 관리</h4>
+                      <p className="text-sm text-gray-500">기존 장소들을 조회하고 수정합니다</p>
+                    </div>
+                    <Link to={ROUTES.ADMIN_PLACES}>
+                      <Button variant="secondary">
+                        장소 목록
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">통계 분석</h3>
-                  <p className="text-sm text-gray-500">
-                    이용 현황 분석
-                  </p>
-                </div>
               </div>
             </div>
-          </Link>
+          </div>
         </div>
       </main>
     </div>

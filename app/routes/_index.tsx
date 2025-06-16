@@ -4,6 +4,9 @@ import { useLoaderData, useActionData, Link, Form } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
+import { Button, Input } from "~/components/ui";
+import { ROUTES } from "~/constants/routes";
+import { getTodayString } from "~/utils/date";
 
 export const meta: MetaFunction = () => {
   return [
@@ -32,7 +35,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const user = await getUser(request);
   if (!user) {
-    return redirect('/auth/login');
+    return redirect(ROUTES.LOGIN);
   }
 
   const formData = await request.formData();
@@ -83,17 +86,19 @@ export default function Index() {
               특별한 데이트 코스를 추천해드립니다
             </p>
             <div className="space-x-4">
-              <Link
-                to="/auth/login"
-                className="inline-block bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-              >
-                로그인
+              <Link to={ROUTES.LOGIN}>
+                <Button size="lg" className="bg-white text-purple-600 hover:bg-gray-100">
+                  로그인
+                </Button>
               </Link>
-              <Link
-                to="/auth/signup"
-                className="inline-block bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-purple-600 transition-colors"
-              >
-                회원가입
+              <Link to={ROUTES.SIGNUP}>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="border-white text-white hover:bg-white hover:text-purple-600"
+                >
+                  회원가입
+                </Button>
               </Link>
             </div>
           </div>
@@ -126,20 +131,16 @@ export default function Index() {
               )}
             </div>
             {userIsAdmin && (
-              <Link
-                to="/admin"
-                className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors"
-              >
-                관리자
+              <Link to={ROUTES.ADMIN}>
+                <Button variant="primary" size="sm">
+                  관리자
+                </Button>
               </Link>
             )}
-            <Form method="post" action="/auth/logout">
-              <button
-                type="submit"
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-              >
+            <Form method="post" action={ROUTES.LOGOUT}>
+              <Button type="submit" variant="danger" size="sm">
                 로그아웃
-              </button>
+              </Button>
             </Form>
           </div>
         </div>
@@ -185,57 +186,49 @@ export default function Index() {
             </div>
 
             {/* 날짜 선택 */}
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-                데이트 날짜 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                id="date"
-                name="date"
-                required
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              />
-            </div>
+            <Input
+              type="date"
+              name="date"
+              label="데이트 날짜"
+              required
+              min={getTodayString()}
+              helperText="오늘 이후 날짜를 선택해주세요"
+            />
 
             {/* 시간대 선택 */}
             <div>
-              <label htmlFor="timeSlots" className="block text-sm font-medium text-gray-700 mb-4">
-                원하는 시간대 <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                희망 시간대 <span className="text-red-500">*</span>
                 <span className="text-sm text-gray-500 ml-2">(복수 선택 가능)</span>
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 {timeSlots.map((timeSlot) => (
-                  <div key={timeSlot.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <label
+                    key={timeSlot.id}
+                    className="flex items-center p-3 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
+                  >
                     <input
-                      id={`timeSlot-${timeSlot.id}`}
-                      type="checkbox" 
+                      type="checkbox"
                       name="timeSlots"
                       value={timeSlot.id}
-                      aria-label={`${timeSlot.name} ${timeSlot.start_time}-${timeSlot.end_time}`}
-                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                     />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{timeSlot.name}</div>
-                      <div className="text-sm text-gray-500">
+                    <div className="ml-3">
+                      <div className="text-sm font-medium text-gray-700">
+                        {timeSlot.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
                         {timeSlot.start_time} - {timeSlot.end_time}
                       </div>
                     </div>
-                  </div>
+                  </label>
                 ))}
               </div>
             </div>
 
-            {/* 제출 버튼 */}
-            <div className="text-center">
-              <button
-                type="submit"
-                className="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-              >
-                💕 데이트 코스 추천받기
-              </button>
-            </div>
+            <Button type="submit" className="w-full" size="lg">
+              맞춤 데이트 코스 추천받기 💕
+            </Button>
           </Form>
         </div>
 
@@ -243,50 +236,51 @@ export default function Index() {
         {actionData?.recommendations && (
           <div className="max-w-4xl mx-auto">
             <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              추천 데이트 코스 ✨
+              ✨ 추천 데이트 코스 ✨
             </h3>
-            
-            {actionData.recommendations.places.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-500 mb-4">😅</div>
-                <p className="text-gray-600">
-                  선택하신 조건에 맞는 장소를 찾을 수 없어요.<br/>
-                  다른 지역이나 시간대를 선택해보세요.
-                </p>
-              </div>
-            ) : (
+            {actionData.recommendations.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {actionData.recommendations.places.map((place) => (
+                {actionData.recommendations.map((place: any) => (
                   <div key={place.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="p-6">
-                      <div className="flex items-center mb-3">
-                        <span className="text-2xl mr-3">{place.categories?.icon || '📍'}</span>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{place.name}</h4>
-                          <p className="text-sm text-gray-500">{place.categories?.name}</p>
-                        </div>
+                    {place.place_images && place.place_images.length > 0 && (
+                      <img
+                        src={place.place_images[0].image_url}
+                        alt={place.name}
+                        className="w-full h-48 object-cover"
+                      />
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-lg font-semibold text-gray-900">{place.name}</h4>
+                        <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                          {place.categories?.name}
+                        </span>
                       </div>
-                      
                       <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                         {place.description}
                       </p>
-                      
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between text-sm text-gray-500">
                         <div className="flex items-center">
-                          <span className="text-yellow-400 mr-1">⭐</span>
-                          <span className="text-sm font-medium">{place.rating?.toFixed(1) || '-'}</span>
+                          <span className="text-yellow-400">⭐</span>
+                          <span className="ml-1">{place.rating}</span>
                         </div>
                         <div className="flex items-center">
-                          <span className="text-gray-400 mr-1">💰</span>
-                          <span className="text-sm">{place.price_range ? '$'.repeat(place.price_range) : '-'}</span>
+                          <span>💰</span>
+                          <span className="ml-1">
+                            {'₩'.repeat(place.price_level)}
+                          </span>
                         </div>
+                        {place.is_partnership && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                            제휴
+                          </span>
+                        )}
                       </div>
-                      
                       {place.tags && place.tags.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-1">
-                          {place.tags.slice(0, 3).map((tag, index) => (
-                            <span key={index} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                              {tag}
+                          {place.tags.slice(0, 3).map((tag: string, index: number) => (
+                            <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                              #{tag}
                             </span>
                           ))}
                         </div>
@@ -294,6 +288,14 @@ export default function Index() {
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-500 text-lg mb-4">😔</div>
+                <p className="text-gray-600">
+                  선택하신 조건에 맞는 데이트 코스가 없습니다.<br />
+                  다른 지역이나 시간대를 선택해보세요.
+                </p>
               </div>
             )}
           </div>
