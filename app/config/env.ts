@@ -14,6 +14,9 @@ export const env = {
   KAKAO_CLIENT_ID: process.env.KAKAO_CLIENT_ID!,
   KAKAO_REDIRECT_URI: process.env.KAKAO_REDIRECT_URI!,
   
+  // 구글 OAuth 설정 (선택사항 - Supabase에서 직접 관리)
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  
   // 개발 환경 확인
   NODE_ENV: process.env.NODE_ENV || 'development',
   
