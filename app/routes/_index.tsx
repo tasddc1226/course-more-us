@@ -87,16 +87,12 @@ export default function Index() {
             </p>
             <div className="space-x-4">
               <Link to={ROUTES.LOGIN}>
-                <Button size="lg" className="bg-white text-purple-600 hover:bg-gray-100">
+                <Button size="lg" variant="white">
                   로그인
                 </Button>
               </Link>
               <Link to={ROUTES.SIGNUP}>
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="border-white text-white hover:bg-white hover:text-purple-600"
-                >
+                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-purple-600">
                   회원가입
                 </Button>
               </Link>
