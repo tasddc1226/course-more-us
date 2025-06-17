@@ -2,6 +2,8 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remi
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Link, useFetcher } from "@remix-run/react";
 import { getAllPlaces, deletePlace } from "~/lib/admin.server";
+import { Button } from "~/components/ui";
+import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
   return [
@@ -49,18 +51,17 @@ export default function AdminPlaces() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <Link
-                to="/admin"
+                to={ROUTES.ADMIN}
                 className="text-purple-600 hover:text-purple-700"
               >
                 ← 관리자 대시보드
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">장소 관리</h1>
             </div>
-            <Link
-              to="/admin/places/new"
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              + 새 장소 추가
+            <Link to={ROUTES.ADMIN_PLACES_NEW}>
+              <Button>
+                + 새 장소 추가
+              </Button>
             </Link>
           </div>
         </div>
@@ -74,11 +75,10 @@ export default function AdminPlaces() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">등록된 장소가 없습니다</h3>
             <p className="text-gray-500 mb-6">첫 번째 장소를 추가해보세요.</p>
-            <Link
-              to="/admin/places/new"
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              장소 추가하기
+            <Link to={ROUTES.ADMIN_PLACES_NEW}>
+              <Button>
+                장소 추가하기
+              </Button>
             </Link>
           </div>
         ) : (
@@ -140,7 +140,7 @@ export default function AdminPlaces() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="flex items-center">
                         <span className="text-yellow-400 mr-1">⭐</span>
-                        {place.rating.toFixed(1)}
+                        {place.rating ? place.rating.toFixed(1) : '0.0'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -169,13 +169,14 @@ export default function AdminPlaces() {
                         >
                           수정
                         </Link>
-                        <button
+                        <Button
                           onClick={() => handleDelete(place.id, place.name)}
-                          className="text-red-600 hover:text-red-900"
+                          variant="danger"
+                          size="sm"
                           disabled={fetcher.state === 'submitting'}
                         >
                           삭제
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>

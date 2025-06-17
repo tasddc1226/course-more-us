@@ -2,6 +2,8 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remi
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Form, useActionData, Link } from "@remix-run/react";
 import { getRegions, getCategories, getTimeSlots, createPlace, updatePlaceTimeSlots } from "~/lib/admin.server";
+import { Button, Input } from "~/components/ui";
+import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
   return [
@@ -91,10 +93,7 @@ export default function NewPlace() {
   const { regions, categories, timeSlots } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   
-  // 안전한 기본값 처리
-  const getDefaultValue = (key: string) => {
-    return actionData?.values?.[key] ? String(actionData.values[key]) : '';
-  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -104,7 +103,7 @@ export default function NewPlace() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <Link
-                to="/admin/places"
+                to={ROUTES.ADMIN_PLACES}
                 className="text-purple-600 hover:text-purple-700"
               >
                 ← 장소 목록
@@ -127,15 +126,10 @@ export default function NewPlace() {
             {/* 기본 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  장소명 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="name"
+                <Input
+                  label="장소명"
                   name="name"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   placeholder="장소명을 입력하세요"
                 />
               </div>
@@ -179,18 +173,14 @@ export default function NewPlace() {
               </div>
 
               <div>
-                <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-2">
-                  평점 (0.0 ~ 5.0)
-                </label>
-                <input
+                <Input
+                  label="평점 (0.0 ~ 5.0)"
                   type="number"
-                  id="rating"
                   name="rating"
-                  min="0"
-                  max="5"
-                  step="0.1"
+                  min={0}
+                  max={5}
+                  step={0.1}
                   defaultValue="4.0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
               </div>
             </div>
@@ -259,14 +249,10 @@ export default function NewPlace() {
             {/* 연락처 및 웹사이트 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  전화번호
-                </label>
-                <input
+                <Input
+                  label="전화번호"
                   type="tel"
-                  id="phone"
                   name="phone"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   placeholder="02-1234-5678"
                 />
               </div>
@@ -407,18 +393,14 @@ export default function NewPlace() {
 
             {/* 제출 버튼 */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
-              <Link
-                to="/admin/places"
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                취소
+              <Link to={ROUTES.ADMIN_PLACES}>
+                <Button variant="outline">
+                  취소
+                </Button>
               </Link>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
+              <Button type="submit">
                 장소 추가
-              </button>
+              </Button>
             </div>
           </Form>
         </div>

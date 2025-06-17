@@ -2,6 +2,9 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remi
 import { json } from "@remix-run/node";
 import { useLoaderData, useActionData, Link, Form, useSubmit } from "@remix-run/react";
 import { requireAdmin, getAllUsers, updateUserRole, deleteUser, getUserStats } from "~/lib/admin.server";
+import { Button } from "~/components/ui";
+import { ROUTES } from "~/constants/routes";
+import { formatDate } from "~/utils/date";
 
 export const meta: MetaFunction = () => {
   return [
@@ -81,9 +84,7 @@ export default function AdminUsers() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('ko-KR');
-  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,20 +93,17 @@ export default function AdminUsers() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
-              <Link to="/admin" className="text-purple-600 hover:text-purple-800">
+              <Link to={ROUTES.ADMIN} className="text-purple-600 hover:text-purple-800">
                 ← 관리자 대시보드
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">유저 관리</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">관리자: {currentUser.email}</span>
-              <Form method="post" action="/auth/logout">
-                <button
-                  type="submit"
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-                >
+              <Form method="post" action={ROUTES.LOGOUT}>
+                <Button type="submit" variant="danger">
                   로그아웃
-                </button>
+                </Button>
               </Form>
             </div>
           </div>
@@ -254,21 +252,20 @@ export default function AdminUsers() {
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.created_at ? formatDate(user.created_at) : '날짜 없음'}
+                      {user.created_at ? formatDate(new Date(user.created_at)) : '날짜 없음'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : '로그인 기록 없음'}
+                      {user.last_sign_in_at ? formatDate(new Date(user.last_sign_in_at)) : '로그인 기록 없음'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
+                      <Button
                         onClick={() => handleDeleteUser(user.id, user.email)}
                         disabled={user.id === currentUser.id}
-                        className={`text-red-600 hover:text-red-900 ${
-                          user.id === currentUser.id ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                        }`}
+                        variant="danger"
+                        size="sm"
                       >
                         삭제
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
