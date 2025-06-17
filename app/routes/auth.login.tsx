@@ -109,7 +109,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="이메일 아이디"
               required
-              className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+              className="px-4 py-4 bg-gray-100 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white focus:border-purple-300 transition-all"
             />
             
             <Input
@@ -119,7 +119,7 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="비밀번호"
               required
-              className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+              className="px-4 py-4 bg-gray-100 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white focus:border-purple-300 transition-all"
             />
 
           {/* 에러 메시지 */}
@@ -147,7 +147,7 @@ export default function Login() {
             className={`w-full py-4 rounded-2xl font-medium transition-all duration-300 ${
               isLoginButtonEnabled
                 ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-300 border border-gray-400 text-gray-500 cursor-not-allowed shadow-sm'
             }`}
           >
             로그인
