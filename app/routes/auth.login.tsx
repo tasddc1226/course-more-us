@@ -147,7 +147,7 @@ export default function Login() {
             className={`w-full py-4 rounded-2xl font-medium transition-all duration-300 ${
               isLoginButtonEnabled
                 ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
-                : 'bg-gray-300 border border-gray-400 text-gray-500 cursor-not-allowed shadow-sm'
+                : 'bg-gray-500 border border-gray-600 text-gray-300 cursor-not-allowed shadow-sm'
             }`}
           >
             로그인
