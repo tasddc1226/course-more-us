@@ -136,23 +136,28 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <div className="text-center">
+          <h2 className="text-4xl font-bold text-white mb-2">
             코스모스 회원가입
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            또는{' '}
+          <p className="text-white/90">
+            특별한 데이트 코스를 함께 시작해보세요
+          </p>
+          <p className="mt-4 text-sm text-white/80">
+            이미 계정이 있으신가요?{' '}
             <Link
               to={ROUTES.LOGIN}
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-white underline hover:text-white/80"
             >
-              기존 계정으로 로그인
+              로그인하기
             </Link>
           </p>
         </div>
-        <Form className="mt-8 space-y-6" method="post">
+        
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
+          <Form className="space-y-6" method="post">
           <div className="space-y-4">
             <Input
               id="email-address"
@@ -201,43 +206,44 @@ export default function Signup() {
             </div>
           )}
 
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full"
-          >
-            회원가입
-          </Button>
-        </Form>
-
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">또는</span>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+            >
+              회원가입
+            </Button>
+          </Form>
 
           <div className="mt-6">
-            <button
-              type="button"
-              onClick={handleKakaoLogin}
-              disabled={isKakaoLoading}
-              className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm bg-yellow-400 text-sm font-medium text-gray-900 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 disabled:opacity-50"
-            >
-              {isKakaoLoading ? (
-                '카카오 로그인 중...'
-              ) : (
-                <>
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z"/>
-                  </svg>
-                  카카오로 시작하기
-                </>
-              )}
-            </button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">또는</span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleKakaoLogin}
+                disabled={isKakaoLoading}
+                className="w-full inline-flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm bg-yellow-400 text-sm font-medium text-gray-900 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 disabled:opacity-50 transition-all"
+              >
+                {isKakaoLoading ? (
+                  '카카오 로그인 중...'
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z"/>
+                    </svg>
+                    카카오로 시작하기
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

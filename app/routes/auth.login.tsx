@@ -91,42 +91,36 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 relative">
-      {/* 배경 하트 패턴 */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 right-20 text-pink-300 text-8xl">♡</div>
-        <div className="absolute bottom-32 left-16 text-pink-300 text-6xl">♡</div>
-        <div className="absolute top-1/3 left-1/4 text-pink-300 text-4xl">♡</div>
-        <div className="absolute bottom-1/4 right-1/3 text-pink-300 text-5xl">♡</div>
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 flex flex-col items-center justify-center px-4 relative">
       <div className="w-full max-w-md relative z-10">
         {/* 로고 및 제목 */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">로그인</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">로그인</h1>
+          <p className="text-white/90">코스모스에 오신 것을 환영합니다</p>
         </div>
 
         {/* 로그인 폼 */}
-        <Form method="post" className="space-y-4">
-          <Input
-            type="email"
-            name="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일 아이디"
-            required
-            className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-          />
-          
-          <Input
-            type="password"
-            name="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호"
-            required
-            className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-          />
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
+          <Form method="post" className="space-y-4">
+            <Input
+              type="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="이메일 아이디"
+              required
+              className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+            />
+            
+            <Input
+              type="password"
+              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호"
+              required
+              className="px-4 py-4 bg-gray-100 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+            />
 
           {/* 에러 메시지 */}
           {actionData?.error && (
@@ -158,16 +152,17 @@ export default function Login() {
           >
             로그인
           </Button>
-        </Form>
+          </Form>
 
-        {/* 이메일/비밀번호 찾기 및 회원가입 링크 */}
-        <div className="flex justify-between items-center mt-6 text-sm">
-          <Link to="/auth/forgot-password" className="text-gray-600 hover:text-gray-800">
-            이메일 / 비밀번호 찾기
-          </Link>
-          <Link to={ROUTES.SIGNUP} className="text-gray-600 hover:text-gray-800">
-            회원가입
-          </Link>
+          {/* 이메일/비밀번호 찾기 및 회원가입 링크 */}
+          <div className="flex justify-between items-center mt-6 text-sm">
+            <Link to="/auth/forgot-password" className="text-gray-600 hover:text-gray-800">
+              이메일 / 비밀번호 찾기
+            </Link>
+            <Link to={ROUTES.SIGNUP} className="text-gray-600 hover:text-gray-800">
+              회원가입
+            </Link>
+          </div>
         </div>
 
         {/* 소셜 로그인 */}
