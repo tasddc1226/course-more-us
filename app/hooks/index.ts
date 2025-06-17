@@ -1,0 +1,1 @@
+export { useSocialLogin, type SocialProvider } from './useSocialLogin'; 
