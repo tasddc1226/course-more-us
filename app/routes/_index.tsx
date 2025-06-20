@@ -109,6 +109,16 @@ export default function Index() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-4">
+            <Link to={ROUTES.REGISTER_PLACE}>
+              <Button variant="primary" size="sm">
+                장소 등록
+              </Button>
+            </Link>
+            <Link to={ROUTES.MY_PLACES}>
+              <Button variant="outline" size="sm">
+                내 장소
+              </Button>
+            </Link>
             <div className="flex items-center space-x-3">
               {user.user_metadata?.avatar_url && (
                 <img
