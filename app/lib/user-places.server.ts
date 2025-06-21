@@ -184,7 +184,7 @@ export async function deleteUserPlace(request: Request, placeId: number) {
 /**
  * 이미지 업로드 (Supabase Storage 사용)
  */
-export async function uploadPlaceImage(request: Request, file: File, placeId?: number): Promise<string> {
+export async function uploadPlaceImage(request: Request, file: File): Promise<string> {
   const supabase = createSupabaseServerClient(request);
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -195,6 +195,8 @@ export async function uploadPlaceImage(request: Request, file: File, placeId?: n
   // 파일 확장자 추출
   const fileExt = file.name.split('.').pop();
   const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+  // Note: 버킷은 Supabase Dashboard 또는 관리자 권한으로 미리 생성되어야 합니다
 
   const { data, error } = await supabase.storage
     .from('place-images')

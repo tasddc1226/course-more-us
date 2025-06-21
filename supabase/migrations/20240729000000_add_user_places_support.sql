@@ -1,5 +1,26 @@
 -- 유저 장소 등록 지원을 위한 마이그레이션
 
+-- 1. Storage 버킷 생성 (place-images)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('place-images', 'place-images', true, 10485760, ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Storage 정책 생성
+-- 인증된 사용자는 이미지 업로드 가능
+CREATE POLICY "Authenticated users can upload images" ON storage.objects FOR INSERT WITH CHECK (
+  bucket_id = 'place-images' AND auth.uid() IS NOT NULL
+);
+
+-- 모든 사용자는 이미지 조회 가능 (public bucket)
+CREATE POLICY "Anyone can view images" ON storage.objects FOR SELECT USING (
+  bucket_id = 'place-images'
+);
+
+-- 자신이 업로드한 이미지만 삭제 가능
+CREATE POLICY "Users can delete their own images" ON storage.objects FOR DELETE USING (
+  bucket_id = 'place-images' AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
 -- places 테이블에 user_id와 source 필드 추가
 ALTER TABLE places 
 ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
