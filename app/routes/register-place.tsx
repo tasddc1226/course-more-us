@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@remix-run/node'
 import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-run/react'
-import { getRegions, getCategories } from '~/lib/admin.server'
+import { getRegions, getCategories } from '~/lib/recommendation.server'
 import { createUserPlace, getTodayPlaceCount, uploadPlaceImage } from '~/lib/user-places.server'
 import { Button, Input } from '~/components/ui'
 import { ROUTES } from '~/constants/routes'
@@ -14,15 +14,21 @@ export const meta: MetaFunction = () => {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAuth(request)
-  
-  const [regions, categories, todayCount] = await Promise.all([
-    getRegions(request),
-    getCategories(request),
-    getTodayPlaceCount(request)
-  ])
+  try {
+    await requireAuth(request)
+    
+    const [regions, categories, todayCount] = await Promise.all([
+      getRegions(request),
+      getCategories(request),
+      getTodayPlaceCount(request)
+    ])
 
-  return json({ regions, categories, todayCount })
+    return json({ regions, categories, todayCount })
+  } catch (error) {
+    console.error('Register place loader error:', error)
+    // requireAuth에서 던진 redirect는 그대로 처리
+    throw error
+  }
 }
 
 export async function action({ request }: ActionFunctionArgs) {

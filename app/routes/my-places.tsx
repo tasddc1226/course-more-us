@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node'
-import { useLoaderData, Link, Form, useSubmit } from '@remix-run/react'
+import { useLoaderData, Link, useSubmit } from '@remix-run/react'
 import { getUserPlaces, deleteUserPlace } from '~/lib/user-places.server'
 import { Button } from '~/components/ui'
 import { ROUTES } from '~/constants/routes'
@@ -79,9 +79,6 @@ export default function MyPlaces() {
               </Link>
               <h1 className="text-2xl font-bold text-gray-900">내 장소</h1>
             </div>
-            <Link to={ROUTES.REGISTER_PLACE}>
-              <Button>새 장소 등록</Button>
-            </Link>
           </div>
         </div>
       </header>
@@ -199,6 +196,44 @@ export default function MyPlaces() {
           </div>
         )}
       </main>
+
+      {/* 플로팅 추가 버튼 - 장소가 있을 때만 표시 */}
+      {places.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 group">
+          <Link 
+            to={ROUTES.REGISTER_PLACE}
+            className="block"
+          >
+            <button 
+              className="w-14 h-14 sm:w-16 sm:h-16 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group-hover:scale-105 active:scale-95"
+              title="새 장소 등록"
+              aria-label="새 장소 등록"
+            >
+              <svg 
+                className="w-6 h-6 sm:w-7 sm:h-7 transition-transform" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2.5} 
+                  d="M12 4v16m8-8H4" 
+                />
+              </svg>
+            </button>
+          </Link>
+          
+          {/* 툴팁 */}
+          <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+              새 장소 등록
+              <div className="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

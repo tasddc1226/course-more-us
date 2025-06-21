@@ -17,6 +17,8 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
+  const url = new URL(request.url);
+  const error = url.searchParams.get('error');
   
   if (user) {
     // 로그인한 사용자에게는 추천 폼 데이터 제공
@@ -26,10 +28,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       isAdmin(request)
     ]);
     
-    return json({ user, regions, timeSlots, isAdmin: userIsAdmin });
+    return json({ user, regions, timeSlots, isAdmin: userIsAdmin, error });
   }
   
-  return json({ user, regions: [], timeSlots: [], isAdmin: false });
+  return json({ user, regions: [], timeSlots: [], isAdmin: false, error });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -71,7 +73,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-  const { user, regions, timeSlots, isAdmin: userIsAdmin } = useLoaderData<typeof loader>();
+  const { user, regions, timeSlots, isAdmin: userIsAdmin, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   if (!user) {
@@ -105,15 +107,15 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {error === 'auth_failed' && (
+        <div className="bg-red-500 text-white text-center py-2">
+          인증에 문제가 발생했습니다. 다시 로그인해주세요.
+        </div>
+      )}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-4">
-            <Link to={ROUTES.REGISTER_PLACE}>
-              <Button variant="primary" size="sm">
-                장소 등록
-              </Button>
-            </Link>
             <Link to={ROUTES.MY_PLACES}>
               <Button variant="outline" size="sm">
                 내 장소
