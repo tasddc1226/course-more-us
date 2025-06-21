@@ -159,38 +159,48 @@ export default function KakaoMapComponent({
       {/* 검색 영역 */}
       <div className="space-y-2">
         <div className="flex space-x-2">
-          <Input
-            type="text"
-            placeholder="장소명 또는 주소로 검색"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="flex-1"
-          />
+          <div className="flex-1 relative">
+            <Input
+              type="text"
+              placeholder="장소명 또는 주소로 검색"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              className="w-full pl-4 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500"
+            />
+          </div>
           <Button 
             onClick={handleSearch}
             disabled={isSearching || !searchKeyword.trim()}
-            size="sm"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg disabled:bg-gray-400"
           >
             {isSearching ? '검색중...' : '검색'}
           </Button>
         </div>
 
         {/* 검색 결과 */}
-        {searchResults.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
-            {searchResults.map((result, index) => (
-              <button
-                key={index}
-                onClick={() => handleSelectSearchResult(result)}
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-              >
-                <div className="font-medium text-sm">{result.placeName}</div>
-                <div className="text-xs text-gray-500">
-                  {result.roadAddress || result.address}
-                </div>
-              </button>
-            ))}
+        {searchKeyword && !isSearching && (
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm">
+            {searchResults.length > 0 ? (
+              <div className="max-h-40 overflow-y-auto">
+                {searchResults.map((result, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSelectSearchResult(result)}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-200 last:border-b-0 transition-colors duration-150"
+                  >
+                    <div className="font-semibold text-sm text-gray-900 mb-1">{result.placeName}</div>
+                    <div className="text-xs text-gray-700 leading-relaxed">
+                      {result.roadAddress || result.address}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-3 text-center text-sm text-gray-600">
+                &apos;{searchKeyword}&apos;에 대한 검색 결과가 없습니다.
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -214,20 +224,34 @@ export default function KakaoMapComponent({
 
       {/* 선택된 위치 정보 */}
       {selectedLocation && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <h4 className="font-medium text-sm text-gray-900 mb-2">선택된 위치</h4>
-          <div className="space-y-1 text-sm text-gray-600">
-            <div>주소: {selectedLocation.address}</div>
-            <div>
-              좌표: {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <h4 className="font-semibold text-sm text-green-800 mb-2 flex items-center">
+            <span className="text-green-600 mr-2">📍</span>
+            선택된 위치
+          </h4>
+          <div className="space-y-2 text-sm">
+            {selectedLocation.placeName && (
+              <div className="text-gray-900">
+                <span className="font-medium">장소명:</span> {selectedLocation.placeName}
+              </div>
+            )}
+            <div className="text-gray-800">
+              <span className="font-medium">주소:</span> {selectedLocation.address}
             </div>
           </div>
         </div>
       )}
 
       {/* 사용법 안내 */}
-      <div className="text-xs text-gray-500">
-        💡 지도를 클릭하거나 검색을 통해 장소를 선택하세요
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="text-xs text-blue-800 flex items-start">
+          <span className="text-blue-600 mr-2 mt-0.5">💡</span>
+          <div>
+            <div className="font-medium mb-1">사용법:</div>
+            <div>• 검색창에 장소명이나 주소를 입력하여 검색</div>
+            <div>• 검색 결과를 클릭하거나 지도를 직접 클릭하여 위치 선택</div>
+          </div>
+        </div>
       </div>
     </div>
   )

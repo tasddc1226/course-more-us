@@ -1,5 +1,23 @@
 import { createSupabaseServerClient } from "~/lib/supabase.server";
+import { findOrCreateRegion } from "~/lib/recommendation.server";
 import type { UserPlaceFormData } from "~/types/forms";
+
+/**
+ * 주소에서 지역명을 추출합니다
+ */
+export function extractRegionFromAddress(address: string): string {
+  // 주소에서 시/구/군 단위 추출
+  const regionPattern = /([가-힣]+시|[가-힣]+구|[가-힣]+군)/;
+  const match = address.match(regionPattern);
+  
+  if (match) {
+    return match[1];
+  }
+  
+  // 패턴이 매치되지 않으면 첫 번째 단어 사용
+  const parts = address.split(' ');
+  return parts[0] || '기타';
+}
 
 /**
  * 유저의 오늘 등록한 장소 개수 확인
@@ -31,7 +49,88 @@ export async function getTodayPlaceCount(request: Request): Promise<number> {
 }
 
 /**
- * 유저 장소 등록
+ * 유저 장소 등록 (지도에서 선택한 위치 기반)
+ */
+export async function createUserPlaceFromLocation(
+  request: Request,
+  placeData: {
+    placeName: string;
+    regionName: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    category_id: number;
+    description: string;
+    tags: string[];
+    images: string[];
+  }
+) {
+  const supabase = createSupabaseServerClient(request);
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error("인증이 필요합니다");
+  }
+
+  // 하루 3개 제한 체크
+  const todayCount = await getTodayPlaceCount(request);
+  if (todayCount >= 3) {
+    throw new Error("하루 최대 3개까지만 장소를 등록할 수 있습니다");
+  }
+
+  // 지역 찾기 또는 생성
+  const region = await findOrCreateRegion(request, placeData.regionName);
+
+  // 장소 등록
+  const { data: place, error: placeError } = await supabase
+    .from('places')
+    .insert({
+      name: placeData.placeName,
+      address: placeData.address,
+      description: placeData.description,
+      latitude: placeData.latitude,
+      longitude: placeData.longitude,
+      tags: placeData.tags,
+      category_id: placeData.category_id,
+      region_id: region.id,
+      user_id: user.id,
+      source: 'user',
+      is_active: true,
+      rating: 0,
+      price_range: 2
+    })
+    .select()
+    .single();
+
+  if (placeError) {
+    console.error('Error creating user place:', placeError);
+    throw new Error("장소 등록 중 오류가 발생했습니다");
+  }
+
+  // 이미지 등록
+  if (placeData.images.length > 0) {
+    const imageInserts = placeData.images.map((imageUrl, index) => ({
+      place_id: place.id,
+      image_url: imageUrl,
+      display_order: index + 1,
+      is_primary: index === 0
+    }));
+
+    const { error: imageError } = await supabase
+      .from('place_images')
+      .insert(imageInserts);
+
+    if (imageError) {
+      console.error('Error creating place images:', imageError);
+      // 이미지 오류는 장소 등록을 실패시키지 않음
+    }
+  }
+
+  return place;
+}
+
+/**
+ * 유저 장소 등록 (기존 방식 - 호환성 유지)
  */
 export async function createUserPlace(
   request: Request, 

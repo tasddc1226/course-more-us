@@ -39,6 +39,47 @@ export async function getCategories(request: Request) {
   return data
 }
 
+// 지역명으로 지역 찾기 또는 생성
+export async function findOrCreateRegion(request: Request, regionName: string) {
+  const supabase = createSupabaseServerClient(request)
+  
+  // 먼저 기존 지역 찾기
+  const { data: existingRegion, error: findError } = await supabase
+    .from('regions')
+    .select('*')
+    .eq('name', regionName)
+    .single()
+
+  if (findError && findError.code !== 'PGRST116') { // PGRST116은 "not found" 에러
+    throw findError
+  }
+
+  // 기존 지역이 있으면 반환
+  if (existingRegion) {
+    return existingRegion
+  }
+
+  // slug 생성 (한글을 영문으로 변환하거나 단순화)
+  const slug = regionName
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9가-힣-]/g, '')
+
+  // 새 지역 생성
+  const { data: newRegion, error: createError } = await supabase
+    .from('regions')
+    .insert({
+      name: regionName,
+      slug: slug,
+      description: `사용자가 추가한 지역: ${regionName}`
+    })
+    .select()
+    .single()
+
+  if (createError) throw createError
+  return newRegion
+}
+
 // 추천 요청 데이터 타입
 export interface RecommendationRequest {
   regionId: number
