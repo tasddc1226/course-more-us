@@ -62,4 +62,16 @@ export interface RecommendationResponse {
     date: string;
     timeSlots: string[];
   };
+}
+
+export interface UserPlaceFormData {
+  name: string;
+  address: string;
+  description: string;
+  tags: string[];
+  images: File[];
+  latitude?: number;
+  longitude?: number;
+  category_id: number;
+  region_id: number;
 } 

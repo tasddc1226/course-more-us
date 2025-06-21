@@ -1,22 +1,32 @@
 import { redirect } from '@remix-run/node'
 import { createSupabaseServerClient } from './supabase.server'
+import { ROUTES } from '~/constants/routes'
 
 export async function requireAuth(request: Request) {
-  const response = new Response()
-  const supabase = createSupabaseServerClient(request, response)
+  const supabase = createSupabaseServerClient(request)
   
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
 
-  if (error || !user) {
-    const url = new URL(request.url)
-    const redirectTo = url.pathname + url.search
-    throw redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`)
+    if (error || !user) {
+      const url = new URL(request.url)
+      const redirectTo = url.pathname + url.search
+      throw redirect(`${ROUTES.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`)
+    }
+
+    return { user, supabase }
+  } catch (error) {
+    console.error('RequireAuth catch error:', error)
+    // redirect Response는 그대로 던져줌
+    if (error instanceof Response) {
+      throw error
+    }
+    // 다른 에러는 홈으로 리다이렉트
+    throw redirect(`${ROUTES.HOME}?error=auth_failed`)
   }
-
-  return { user, supabase }
 }
 
 export async function getUser(request: Request) {

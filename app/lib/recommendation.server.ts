@@ -26,6 +26,19 @@ export async function getTimeSlots(request: Request) {
   return data
 }
 
+// 모든 카테고리 조회 (사용자용)
+export async function getCategories(request: Request) {
+  const supabase = createSupabaseServerClient(request)
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name')
+
+  if (error) throw error
+  return data
+}
+
 // 추천 요청 데이터 타입
 export interface RecommendationRequest {
   regionId: number

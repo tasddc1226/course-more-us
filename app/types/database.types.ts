@@ -161,8 +161,10 @@ export type Database = {
           price_range: number | null
           rating: number | null
           region_id: number | null
+          source: string
           tags: string[] | null
           updated_at: string | null
+          user_id: string | null
           website: string | null
         }
         Insert: {
@@ -181,8 +183,10 @@ export type Database = {
           price_range?: number | null
           rating?: number | null
           region_id?: number | null
+          source?: string
           tags?: string[] | null
           updated_at?: string | null
+          user_id?: string | null
           website?: string | null
         }
         Update: {
@@ -201,8 +205,10 @@ export type Database = {
           price_range?: number | null
           rating?: number | null
           region_id?: number | null
+          source?: string
           tags?: string[] | null
           updated_at?: string | null
+          user_id?: string | null
           website?: string | null
         }
         Relationships: [

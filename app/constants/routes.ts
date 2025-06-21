@@ -22,7 +22,12 @@ export const ROUTES = {
   // 추천 시스템 (향후 추가)
   RECOMMENDATIONS: '/recommendations',
   FAVORITES: '/favorites',
-  PROFILE: '/profile'
+  PROFILE: '/profile',
+  MY_PROFILE: '/my-profile',
+  
+  // User Place Routes
+  REGISTER_PLACE: '/register-place',
+  MY_PLACES: '/my-places',
 } as const;
 
 export const ADMIN_ROUTES = [
