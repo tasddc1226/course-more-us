@@ -58,9 +58,11 @@
 ```env
 # 기존 환경 변수들...
 
-# 카카오 지도 API 설정
-KAKAO_MAP_APP_KEY=your_javascript_key_here
+# 카카오 지도 API 설정 (클라이언트에서 사용하므로 VITE_ 접두사 필요)
+VITE_KAKAO_MAP_APP_KEY=your_javascript_key_here
 ```
+
+> **중요**: Vite에서는 클라이언트 사이드에서 환경 변수를 사용하려면 `VITE_` 접두사가 필요합니다.
 
 ### 3. 마이그레이션 적용
 

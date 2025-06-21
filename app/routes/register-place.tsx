@@ -1,10 +1,13 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@remix-run/node'
 import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-run/react'
+import { useState } from 'react'
 import { getRegions, getCategories } from '~/lib/recommendation.server'
 import { createUserPlace, getTodayPlaceCount, uploadPlaceImage } from '~/lib/user-places.server'
 import { Button, Input } from '~/components/ui'
+import { ClientOnlyKakaoMap } from '~/components/common'
 import { ROUTES } from '~/constants/routes'
 import { requireAuth } from '~/lib/auth.server'
+import type { PlaceLocationData } from '~/types/kakao-map'
 
 export const meta: MetaFunction = () => {
   return [
@@ -97,6 +100,9 @@ export default function RegisterPlace() {
   const actionData = useActionData<typeof action>()
   const navigation = useNavigation()
   const isSubmitting = navigation.state === 'submitting'
+  
+  // 지도에서 선택된 위치 정보
+  const [selectedLocation, setSelectedLocation] = useState<PlaceLocationData | null>(null)
 
   // 일일 제한 체크
   if (todayCount >= 3) {
@@ -220,19 +226,34 @@ export default function RegisterPlace() {
               </div>
             </div>
 
-            {/* 주소 */}
+            {/* 위치 선택 */}
             <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                주소 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="address"
+              <div className="block text-sm font-medium text-gray-700 mb-2">
+                위치 선택 <span className="text-red-500">*</span>
+              </div>
+              
+              <ClientOnlyKakaoMap
+                onLocationSelect={setSelectedLocation}
+                height="300px"
+                className="mb-4"
+              />
+              
+              {/* 선택된 위치 정보를 hidden input으로 전송 */}
+              <input
+                type="hidden"
                 name="address"
-                rows={2}
+                value={selectedLocation?.address || ''}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="예: 서울특별시 강남구 테헤란로 427"
-                defaultValue={actionData?.values?.address}
+              />
+              <input
+                type="hidden"
+                name="latitude"
+                value={selectedLocation?.latitude || 0}
+              />
+              <input
+                type="hidden"
+                name="longitude"
+                value={selectedLocation?.longitude || 0}
               />
             </div>
 
@@ -289,30 +310,7 @@ export default function RegisterPlace() {
               </p>
             </div>
 
-            {/* 위치 정보 (선택사항) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Input
-                  label="위도 (선택사항)"
-                  type="number"
-                  name="latitude"
-                  step="any"
-                  placeholder="37.5665"
-                  defaultValue={actionData?.values?.latitude}
-                />
-              </div>
 
-              <div>
-                <Input
-                  label="경도 (선택사항)"
-                  type="number"
-                  name="longitude"
-                  step="any"
-                  placeholder="126.9780"
-                  defaultValue={actionData?.values?.longitude}
-                />
-              </div>
-            </div>
 
             {/* 제출 버튼 */}
             <div className="flex justify-end space-x-4 pt-6 border-t">

@@ -33,6 +33,11 @@ export function loadKakaoMapSDK(): Promise<void> {
     }
 
     // 스크립트 태그 생성
+    if (!env.KAKAO_MAP_APP_KEY) {
+      reject(new Error('카카오 지도 API 키가 설정되지 않았습니다. .env 파일에 VITE_KAKAO_MAP_APP_KEY를 추가해주세요.'))
+      return
+    }
+    
     const script = document.createElement('script')
     script.type = 'text/javascript'
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${env.KAKAO_MAP_APP_KEY}&libraries=services,clusterer,drawing&autoload=false`
