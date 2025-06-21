@@ -56,7 +56,6 @@ export function useSocialLogin(options: UseSocialLoginOptions = {}) {
       }
       
       // OAuth 리다이렉트가 성공적으로 시작되면 로딩 상태는 유지
-      console.log(`${provider} 로그인 시작됨`);
       onSuccess?.();
       
     } catch (error) {

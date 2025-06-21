@@ -51,7 +51,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           }
         } catch (error) {
           // 동의 정보 조회 실패 시 새 사용자로 간주하고 약관 동의 페이지로 이동
-          console.log('새 사용자 또는 동의 정보 조회 실패:', error)
+  
         }
         
         // 새 사용자이거나 약관 동의가 필요한 경우 약관 동의 페이지로 이동

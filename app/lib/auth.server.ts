@@ -11,16 +11,12 @@ export async function requireAuth(request: Request) {
       error,
     } = await supabase.auth.getUser()
 
-    console.log('RequireAuth - User:', user?.id, 'Error:', error?.message)
-
     if (error || !user) {
-      console.log('Auth failed - redirecting to login')
       const url = new URL(request.url)
       const redirectTo = url.pathname + url.search
       throw redirect(`${ROUTES.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`)
     }
 
-    console.log('Auth successful for user:', user.email)
     return { user, supabase }
   } catch (error) {
     console.error('RequireAuth catch error:', error)

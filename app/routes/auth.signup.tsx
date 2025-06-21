@@ -68,7 +68,6 @@ export async function action({ request }: ActionFunctionArgs) {
   if (data.user) {
     try {
       // 임시 인증 request 생성 (실제로는 이메일 확인 후 로그인 시 저장됨)
-      console.log('회원가입 완료, 이메일 확인 후 동의 정보가 저장됩니다.')
     } catch (agreementError) {
       console.error('동의 정보 저장 예약 실패:', agreementError)
     }

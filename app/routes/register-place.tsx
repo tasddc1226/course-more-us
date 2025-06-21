@@ -14,21 +14,15 @@ export const meta: MetaFunction = () => {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  try {
-    await requireAuth(request)
-    
-    const [regions, categories, todayCount] = await Promise.all([
-      getRegions(request),
-      getCategories(request),
-      getTodayPlaceCount(request)
-    ])
+  await requireAuth(request)
+  
+  const [regions, categories, todayCount] = await Promise.all([
+    getRegions(request),
+    getCategories(request),
+    getTodayPlaceCount(request)
+  ])
 
-    return json({ regions, categories, todayCount })
-  } catch (error) {
-    console.error('Register place loader error:', error)
-    // requireAuth에서 던진 redirect는 그대로 처리
-    throw error
-  }
+  return json({ regions, categories, todayCount })
 }
 
 export async function action({ request }: ActionFunctionArgs) {
