@@ -23,6 +23,7 @@ export const ROUTES = {
   RECOMMENDATIONS: '/recommendations',
   FAVORITES: '/favorites',
   PROFILE: '/profile',
+  MY_PROFILE: '/my-profile',
   
   // User Place Routes
   REGISTER_PLACE: '/register-place',

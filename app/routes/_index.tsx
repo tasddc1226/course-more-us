@@ -73,7 +73,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-  const { user, regions, timeSlots, isAdmin: userIsAdmin, error } = useLoaderData<typeof loader>();
+  const { user, regions, timeSlots, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   if (!user) {
@@ -113,59 +113,46 @@ export default function Index() {
         </div>
       )}
       <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
-          <div className="flex items-center space-x-4">
-            <Link to={ROUTES.MY_PLACES}>
-              <Button variant="outline" size="sm">
-                내 장소
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-3">
-              {user.user_metadata?.avatar_url && (
+          <div className="flex items-center space-x-3">
+            <span className="text-sm text-gray-600 hidden sm:block">
+              안녕하세요, {user.user_metadata?.full_name || '사용자'}님!
+            </span>
+            <Link to={ROUTES.MY_PROFILE} className="relative">
+              {user.user_metadata?.avatar_url ? (
                 <img
                   src={user.user_metadata.avatar_url}
                   alt="프로필"
-                  className="w-8 h-8 rounded-full"
+                  className="w-10 h-10 rounded-full hover:ring-2 hover:ring-purple-300 transition-all cursor-pointer"
                 />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center hover:ring-2 hover:ring-purple-300 transition-all cursor-pointer">
+                  <span className="text-lg text-purple-600">👤</span>
+                </div>
               )}
-              <span className="text-gray-700">
-                안녕하세요, {user.user_metadata?.full_name || user.email}님!
-              </span>
               {user.app_metadata?.provider === 'kakao' && (
-                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                  카카오
-                </span>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-bold">K</span>
+                </div>
               )}
-            </div>
-            {userIsAdmin && (
-              <Link to={ROUTES.ADMIN}>
-                <Button variant="primary" size="sm">
-                  관리자
-                </Button>
-              </Link>
-            )}
-            <Form method="post" action={ROUTES.LOGOUT}>
-              <Button type="submit" variant="danger" size="sm">
-                로그아웃
-              </Button>
-            </Form>
+            </Link>
           </div>
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+      <main className="max-w-md mx-auto px-4 py-6">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
             오늘은 어떤 데이트를 해볼까요?
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm">
             지역과 시간을 선택하면 맞춤 데이트 코스를 추천해드려요
           </p>
         </div>
 
         {/* 추천 요청 폼 */}
-        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <Form method="post" className="space-y-6">
             {actionData?.error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -242,14 +229,14 @@ export default function Index() {
 
         {/* 추천 결과 */}
         {actionData?.recommendations && (
-          <div className="max-w-4xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
               ✨ 추천 데이트 코스 ✨
             </h3>
-            {actionData.recommendations.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {actionData.recommendations.map((place: any) => (
-                  <div key={place.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            {(actionData.recommendations as any)?.places?.length > 0 ? (
+              <div className="space-y-4">
+                {((actionData.recommendations as any)?.places || []).map((place: any) => (
+                  <div key={place.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                     {place.place_images && place.place_images.length > 0 && (
                       <img
                         src={place.place_images[0].image_url}
@@ -258,20 +245,22 @@ export default function Index() {
                       />
                     )}
                     <div className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-lg font-semibold text-gray-900">{place.name}</h4>
-                        <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                          {place.categories?.name}
-                        </span>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-1">{place.name}</h4>
+                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                            {place.categories?.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-500 ml-2">
+                          <span className="text-yellow-400">⭐</span>
+                          <span className="ml-1">{place.rating}</span>
+                        </div>
                       </div>
                       <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                         {place.description}
                       </p>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">⭐</span>
-                          <span className="ml-1">{place.rating}</span>
-                        </div>
+                      <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
                         <div className="flex items-center">
                           <span>💰</span>
                           <span className="ml-1">
@@ -285,7 +274,7 @@ export default function Index() {
                         )}
                       </div>
                       {place.tags && place.tags.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
                           {place.tags.slice(0, 3).map((tag: string, index: number) => (
                             <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                               #{tag}
