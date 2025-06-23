@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "~/lib/supabase.server";
 import { findOrCreateRegion } from "~/lib/recommendation.server";
 import type { UserPlaceFormData } from "~/types/forms";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * 주소에서 지역명을 추출합니다
@@ -291,25 +292,54 @@ export async function uploadPlaceImage(request: Request, file: File): Promise<st
     throw new Error("인증이 필요합니다");
   }
 
-  // 파일 확장자 추출
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  try {
+    // 파일 확장자 추출
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-  // Note: 버킷은 Supabase Dashboard 또는 관리자 권한으로 미리 생성되어야 합니다
+    // 서비스 키로 관리자 권한 클라이언트 생성 (RLS 우회)
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
 
-  const { data, error } = await supabase.storage
-    .from('place-images')
-    .upload(fileName, file);
+    // 관리자 권한으로 이미지 업로드 (RLS 우회)
+    const { data, error } = await adminSupabase.storage
+      .from('place-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
-  if (error) {
-    console.error('Error uploading image:', error);
-    throw new Error("이미지 업로드 중 오류가 발생했습니다");
+    if (error) {
+      console.error('Storage upload error:', error);
+      throw new Error(`이미지 업로드 실패: ${error.message}`);
+    }
+
+    if (!data?.path) {
+      throw new Error("업로드된 파일 경로를 찾을 수 없습니다");
+    }
+
+    // 공개 URL 생성 (일반 클라이언트로도 가능)
+    const { data: { publicUrl } } = supabase.storage
+      .from('place-images')
+      .getPublicUrl(data.path);
+
+    return publicUrl;
+
+  } catch (error) {
+    console.error('Error in uploadPlaceImage:', error);
+    
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    throw new Error("이미지 업로드 중 알 수 없는 오류가 발생했습니다");
   }
-
-  // 공개 URL 생성
-  const { data: { publicUrl } } = supabase.storage
-    .from('place-images')
-    .getPublicUrl(data.path);
-
-  return publicUrl;
 }
