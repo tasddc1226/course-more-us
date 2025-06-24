@@ -153,8 +153,8 @@ export type Database = {
           id: number
           is_active: boolean | null
           is_partnership: boolean | null
-          latitude: number
-          longitude: number
+          latitude: number | null
+          longitude: number | null
           name: string
           operating_hours: Json | null
           phone: string | null
@@ -175,8 +175,8 @@ export type Database = {
           id?: number
           is_active?: boolean | null
           is_partnership?: boolean | null
-          latitude: number
-          longitude: number
+          latitude?: number | null
+          longitude?: number | null
           name: string
           operating_hours?: Json | null
           phone?: string | null
@@ -197,8 +197,8 @@ export type Database = {
           id?: number
           is_active?: boolean | null
           is_partnership?: boolean | null
-          latitude?: number
-          longitude?: number
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           operating_hours?: Json | null
           phone?: string | null
