@@ -33,7 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return json({ user, profile, regions, timeSlots, isAdmin: userIsAdmin, error });
   }
   
-  return json({ user, regions: [], timeSlots: [], isAdmin: false, error });
+  return json({ user, profile: null, regions: [], timeSlots: [], isAdmin: false, error });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -194,15 +194,16 @@ export default function Index() {
 
             {/* 시간대 선택 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div className="block text-sm font-medium text-gray-700 mb-3">
                 희망 시간대 <span className="text-red-500">*</span>
                 <span className="text-sm text-gray-500 ml-2">(복수 선택 가능)</span>
-              </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {timeSlots.map((timeSlot) => (
                   <label
                     key={timeSlot.id}
                     className="flex items-center p-3 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
+                    aria-label={`${timeSlot.name} 시간대 선택`}
                   >
                     <input
                       type="checkbox"
