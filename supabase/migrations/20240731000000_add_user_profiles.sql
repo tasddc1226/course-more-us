@@ -64,18 +64,24 @@ SELECT create_profile_for_existing_users();
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO user_profiles (id, nickname, avatar_url)
-  VALUES (
-    NEW.id,
-    COALESCE(
-      NEW.raw_user_meta_data->>'full_name',
-      SPLIT_PART(NEW.email, '@', 1)
-    ),
-    NEW.raw_user_meta_data->>'avatar_url'
-  );
+  -- 이미 프로필이 존재하지 않는 경우에만 생성
+  IF NOT EXISTS (SELECT 1 FROM user_profiles WHERE id = NEW.id) THEN
+    INSERT INTO user_profiles (id, nickname, avatar_url)
+    VALUES (
+      NEW.id,
+      COALESCE(
+        NEW.raw_user_meta_data->>'full_name',
+        SPLIT_PART(NEW.email, '@', 1)
+      ),
+      NEW.raw_user_meta_data->>'avatar_url'
+    );
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 기존 트리거 삭제 (존재하는 경우)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 -- 새 사용자 가입 시 프로필 자동 생성 트리거
 CREATE TRIGGER on_auth_user_created
