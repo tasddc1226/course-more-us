@@ -259,10 +259,10 @@ export async function getAllUsers(request: Request) {
 
 // 사용자 역할 업데이트
 export async function updateUserRole(request: Request, userId: string, newRole: 'admin' | 'user') {
-  const { supabase } = await requireAdmin(request)
+  await requireAdmin(request)
   
-  // upsert를 사용하여 존재하지 않으면 생성, 존재하면 업데이트
-  const { data, error } = await supabase
+  // service role을 사용하여 RLS 우회
+  const { data, error } = await supabaseAdmin
     .from('user_roles')
     .upsert({ 
       user_id: userId, 
@@ -271,10 +271,9 @@ export async function updateUserRole(request: Request, userId: string, newRole: 
       onConflict: 'user_id'
     })
     .select()
-    .single()
 
   if (error) throw error
-  return data
+  return data?.[0] || { user_id: userId, role: newRole }
 }
 
 // 사용자 삭제 (소프트 삭제 - 실제로는 비활성화)

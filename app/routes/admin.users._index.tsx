@@ -49,6 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
   } catch (error) {
     // Error handling without console.log
+    console.error(error);
     return json({ error: '작업 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }
