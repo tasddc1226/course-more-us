@@ -1,10 +1,12 @@
-import type { MetaFunction, LoaderFunctionArgs } from '@remix-run/node'
+import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
-import { useLoaderData, Link, Form } from '@remix-run/react'
+import { useLoaderData, Link, Form, useActionData, useSubmit } from '@remix-run/react'
 import { requireAuth } from '~/lib/auth.server'
 import { isAdmin } from '~/lib/admin.server'
+import { getUserAgreements, toggleMarketingAgreement } from '~/lib/agreements.server'
 import { Button } from '~/components/ui'
 import { ROUTES } from '~/constants/routes'
+import { formatDate } from '~/utils/date'
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,12 +18,44 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   const { user } = await requireAuth(request)
   const userIsAdmin = await isAdmin(request)
+  const agreements = await getUserAgreements(request)
   
-  return json({ user, isAdmin: userIsAdmin })
+  return json({ 
+    user, 
+    isAdmin: userIsAdmin,
+    marketingAgreed: agreements?.marketing_agreed ?? false,
+    marketingAgreedAt: agreements?.marketing_agreed_at ?? null
+  })
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData()
+  const action = formData.get('action')
+
+  try {
+    switch (action) {
+      case 'toggleMarketing': {
+        await toggleMarketingAgreement(request)
+        return json({ success: true, message: '마케팅 수신 동의 설정이 변경되었습니다.' })
+      }
+      default:
+        return json({ error: '잘못된 액션입니다.' }, { status: 400 })
+    }
+  } catch (error) {
+    return json({ error: '설정 변경 중 오류가 발생했습니다.' }, { status: 500 })
+  }
 }
 
 export default function MyProfile() {
-  const { user, isAdmin: userIsAdmin } = useLoaderData<typeof loader>()
+  const { user, isAdmin: userIsAdmin, marketingAgreed, marketingAgreedAt } = useLoaderData<typeof loader>()
+  const actionData = useActionData<typeof action>()
+  const submit = useSubmit()
+
+  const handleMarketingToggle = () => {
+    const formData = new FormData()
+    formData.append('action', 'toggleMarketing')
+    submit(formData, { method: 'post' })
+  }
 
   const menuItems = [
     {
@@ -94,6 +128,46 @@ export default function MyProfile() {
                 </p>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* 알림 메시지 */}
+        {actionData && 'success' in actionData && actionData.success && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl">
+            {actionData.message}
+          </div>
+        )}
+        {actionData && 'error' in actionData && actionData.error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl">
+            {actionData.error}
+          </div>
+        )}
+
+        {/* 마케팅 동의 설정 */}
+        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 설정</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">마케팅 정보 수신</h4>
+              <p className="text-sm text-gray-500 mt-1" id="marketing-description">
+                새로운 데이트 코스나 이벤트 정보를 받아보실 수 있습니다.
+              </p>
+              {marketingAgreed && marketingAgreedAt && (
+                <p className="text-xs text-gray-400 mt-1">
+                  동의 시점: {formatDate(new Date(marketingAgreedAt))}
+                </p>
+              )}
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer" aria-label="마케팅 정보 수신 동의 토글">
+              <input
+                type="checkbox"
+                checked={marketingAgreed}
+                onChange={handleMarketingToggle}
+                className="sr-only peer"
+                aria-describedby="marketing-description"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
           </div>
         </div>
 
