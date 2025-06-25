@@ -4,11 +4,11 @@ import { useLoaderData, Link, Form, useActionData, useSubmit } from '@remix-run/
 import { requireAuth } from '~/lib/auth.server'
 import { isAdmin } from '~/lib/admin.server'
 import { getUserAgreements, toggleMarketingAgreement } from '~/lib/agreements.server'
-import { getUserProfile, updateUserProfile } from '~/lib/profile.server'
-import { Button, Input } from '~/components/ui'
+import { getUserProfile } from '~/lib/profile.server'
+import { Button } from '~/components/ui'
+
 import { ROUTES } from '~/constants/routes'
 import { formatDate } from '~/utils/date'
-import { useState } from 'react'
 
 export const meta: MetaFunction = () => {
   return [
@@ -38,11 +38,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     switch (action) {
-      case 'updateProfile': {
-        const nickname = formData.get('nickname') as string
-        await updateUserProfile(request, { nickname })
-        return json({ success: true, message: '닉네임이 성공적으로 변경되었습니다.' })
-      }
       case 'toggleMarketing': {
         await toggleMarketingAgreement(request)
         return json({ success: true, message: '마케팅 수신 동의 설정이 변경되었습니다.' })
@@ -62,8 +57,6 @@ export default function MyProfile() {
   const { user, profile, isAdmin: userIsAdmin, marketingAgreed, marketingAgreedAt } = useLoaderData<typeof loader>()
   const actionData = useActionData<typeof action>()
   const submit = useSubmit()
-  const [isEditingNickname, setIsEditingNickname] = useState(false)
-  const [nicknameValue, setNicknameValue] = useState(profile?.nickname || '')
 
   const handleMarketingToggle = () => {
     const formData = new FormData()
@@ -71,16 +64,13 @@ export default function MyProfile() {
     submit(formData, { method: 'post' })
   }
 
-  const handleNicknameSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const formData = new FormData()
-    formData.append('action', 'updateProfile')
-    formData.append('nickname', nicknameValue)
-    submit(formData, { method: 'post' })
-    setIsEditingNickname(false)
-  }
-
   const menuItems = [
+    {
+      title: '내 정보 보기',
+      description: '프로필 정보 확인 및 수정',
+      icon: '👤',
+      href: ROUTES.MY_INFO,
+    },
     {
       title: '내 장소',
       description: '등록한 데이트 장소 관리',
@@ -103,17 +93,21 @@ export default function MyProfile() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
-      <div className="max-w-md mx-auto px-4 py-8">
-        {/* 헤더 타이틀 */}
-        <div className="text-center mb-8">
+      {/* 헤더 */}
+      <div className="bg-white/10 backdrop-blur-sm">
+        <div className="max-w-md mx-auto px-4 py-4 flex items-center">
           <Link
             to={ROUTES.HOME}
-            className="inline-flex items-center text-white/90 hover:text-white mb-4 transition-colors"
+            className="mr-4 text-white/90 hover:text-white transition-colors"
+            aria-label="뒤로가기"
           >
-            ← 홈으로 돌아가기
+            ←
           </Link>
-          <h1 className="text-3xl font-bold text-white">마이 페이지</h1>
+          <h1 className="text-lg font-semibold text-white">마이 페이지</h1>
         </div>
+      </div>
+
+      <div className="max-w-md mx-auto px-4 py-6">
 
         {/* 프로필 섹션 */}
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-xl">
@@ -137,58 +131,16 @@ export default function MyProfile() {
               )}
             </div>
             <div className="flex-1">
-              {isEditingNickname ? (
-                <form onSubmit={handleNicknameSubmit} className="space-y-2">
-                  <Input
-                    type="text"
-                    value={nicknameValue}
-                    onChange={(e) => setNicknameValue(e.target.value)}
-                    placeholder="닉네임을 입력하세요"
-                    className="text-lg font-semibold"
-                    maxLength={50}
-                    required
-                  />
-                  <div className="flex space-x-2">
-                    <Button type="submit" size="sm" className="text-xs">
-                      저장
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-xs"
-                      onClick={() => {
-                        setIsEditingNickname(false)
-                        setNicknameValue(profile?.nickname || '')
-                      }}
-                    >
-                      취소
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {profile?.nickname || user.user_metadata?.full_name || '사용자'}
-                    </h2>
-                    <button
-                      onClick={() => setIsEditingNickname(true)}
-                      className="text-purple-600 hover:text-purple-800 text-sm"
-                      aria-label="닉네임 편집"
-                    >
-                      ✏️
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                  {user.app_metadata?.provider && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {user.app_metadata.provider === 'kakao' ? '카카오' : 
-                       user.app_metadata.provider === 'google' ? '구글' : 
-                       user.app_metadata.provider} 계정
-                    </p>
-                  )}
-                </div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {profile?.nickname || user.user_metadata?.full_name || '사용자'}
+              </h2>
+              <p className="text-sm text-gray-500">{user.email}</p>
+              {user.app_metadata?.provider && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {user.app_metadata.provider === 'kakao' ? '카카오' : 
+                   user.app_metadata.provider === 'google' ? '구글' : 
+                   user.app_metadata.provider} 계정
+                </p>
               )}
             </div>
           </div>
