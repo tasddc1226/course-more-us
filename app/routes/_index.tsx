@@ -4,6 +4,7 @@ import { useLoaderData, useActionData, Link, Form } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
+import { getUserProfile } from "~/lib/profile.server";
 import { Button, Input } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import { getTodayString } from "~/utils/date";
@@ -22,13 +23,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   if (user) {
     // 로그인한 사용자에게는 추천 폼 데이터 제공
-    const [regions, timeSlots, userIsAdmin] = await Promise.all([
+    const [regions, timeSlots, userIsAdmin, profile] = await Promise.all([
       getRegions(request),
       getTimeSlots(request),
-      isAdmin(request)
+      isAdmin(request),
+      getUserProfile(request)
     ]);
     
-    return json({ user, regions, timeSlots, isAdmin: userIsAdmin, error });
+    return json({ user, profile, regions, timeSlots, isAdmin: userIsAdmin, error });
   }
   
   return json({ user, regions: [], timeSlots: [], isAdmin: false, error });
@@ -73,7 +75,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-  const { user, regions, timeSlots, error } = useLoaderData<typeof loader>();
+  const { user, profile, regions, timeSlots, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   if (!user) {
@@ -117,7 +119,7 @@ export default function Index() {
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-3">
             <span className="text-sm text-gray-600 hidden sm:block">
-              안녕하세요, {user.user_metadata?.full_name || '사용자'}님!
+              안녕하세요, {(profile?.nickname) || (user.user_metadata as Record<string, unknown>)?.full_name as string || '사용자'}님!
             </span>
             <Link to={ROUTES.MY_PROFILE} className="relative">
               {user.user_metadata?.avatar_url ? (

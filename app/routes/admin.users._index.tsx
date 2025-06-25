@@ -213,10 +213,10 @@ export default function AdminUsers() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8">
-                          {user.user_metadata?.avatar_url && typeof user.user_metadata.avatar_url === 'string' ? (
+                          {(user.user_metadata as Record<string, unknown>)?.avatar_url && typeof (user.user_metadata as Record<string, unknown>).avatar_url === 'string' ? (
                             <img
                               className="h-8 w-8 rounded-full"
-                              src={user.user_metadata.avatar_url}
+                              src={(user.user_metadata as Record<string, unknown>).avatar_url as string}
                               alt=""
                             />
                           ) : (
@@ -229,16 +229,11 @@ export default function AdminUsers() {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
+                            {user.nickname || (user.user_metadata as Record<string, unknown>)?.full_name as string || user.email}
+                          </div>
+                          <div className="text-sm text-gray-500">
                             {user.email}
                           </div>
-                          {(() => {
-                            const fullName = user.user_metadata?.full_name;
-                            return typeof fullName === 'string' ? (
-                              <div className="text-sm text-gray-500">
-                                {fullName}
-                              </div>
-                            ) : null;
-                          })()}
                         </div>
                       </div>
                     </td>

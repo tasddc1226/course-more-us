@@ -198,6 +198,7 @@ type AdminUserSummary = {
   app_metadata: Record<string, unknown>
   role: 'admin' | 'user'
   placesCount: number
+  nickname: string | null
 }
 
 // ===== 유저 관리 함수들 =====
@@ -219,6 +220,16 @@ export async function getAllUsers(request: Request) {
   if (roleError) throw roleError
   const roleMap = new Map(
     (roleRows as Array<{ user_id: string; role: string | null }>).map((r) => [r.user_id, (r.role ?? 'user') as 'admin' | 'user'])
+  )
+
+  // 2-1) user_profiles 테이블에서 프로필 정보 가져오기
+  const { data: profileRows, error: profileError } = await supabaseAdmin
+    .from('user_profiles')
+    .select('id, nickname')
+
+  if (profileError) throw profileError
+  const profileMap = new Map(
+    (profileRows as Array<{ id: string; nickname: string | null }>).map((p) => [p.id, p.nickname])
   )
 
   // 3) 각 유저별 등록한 장소 수 집계
@@ -249,6 +260,7 @@ export async function getAllUsers(request: Request) {
     app_metadata: u.app_metadata ?? {},
     role: roleMap.get(u.id) ?? 'user',
     placesCount: userPlaceCounts.get(u.id) ?? 0,
+    nickname: profileMap.get(u.id) ?? null,
   }))
 
   // 관리 편의상 최근 가입 순으로 정렬
