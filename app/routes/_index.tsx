@@ -5,9 +5,9 @@ import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
 import { getUserProfile } from "~/lib/profile.server";
-import { Button, Input } from "~/components/ui";
+import { Button, Calendar } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
-import { getTodayString } from "~/utils/date";
+
 
 export const meta: MetaFunction = () => {
   return [
@@ -183,12 +183,11 @@ export default function Index() {
             </div>
 
             {/* 날짜 선택 */}
-            <Input
-              type="date"
+            <Calendar
               name="date"
               label="데이트 날짜"
               required
-              min={getTodayString()}
+              minDate={new Date()}
               helperText="오늘 이후 날짜를 선택해주세요"
             />
 
@@ -236,9 +235,9 @@ export default function Index() {
             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
               ✨ 추천 데이트 코스 ✨
             </h3>
-            {(actionData.recommendations as any)?.places?.length > 0 ? (
+            {(actionData.recommendations as { places?: unknown[] })?.places?.length > 0 ? (
               <div className="space-y-4">
-                {((actionData.recommendations as any)?.places || []).map((place: any) => (
+                {((actionData.recommendations as { places?: Record<string, unknown>[] })?.places || []).map((place: Record<string, unknown>) => (
                   <div key={place.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                     {place.place_images && place.place_images.length > 0 && (
                       <img

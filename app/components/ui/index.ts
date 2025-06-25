@@ -4,4 +4,5 @@ export { default as Select } from './Select';
 export { default as Textarea } from './Textarea';
 export { default as FormField } from './FormField';
 export { default as Modal } from './Modal';
-export { default as ErrorMessage } from './ErrorMessage'; 
+export { default as ErrorMessage } from './ErrorMessage';
+export { default as Calendar } from './Calendar'; 
