@@ -79,23 +79,20 @@ export default function MyProfile() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center">
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
+      <div className="max-w-md mx-auto px-4 py-8">
+        {/* 헤더 타이틀 */}
+        <div className="text-center mb-8">
           <Link
             to={ROUTES.HOME}
-            className="text-purple-600 hover:text-purple-700 mr-4"
+            className="inline-flex items-center text-white/90 hover:text-white mb-4 transition-colors"
           >
-            ← 홈으로
+            ← 홈으로 돌아가기
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">마이 페이지</h1>
+          <h1 className="text-3xl font-bold text-white">마이 페이지</h1>
         </div>
-      </header>
-
-      <main className="max-w-md mx-auto px-4 py-6">
         {/* 프로필 섹션 */}
-        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-xl">
           <div className="flex items-center space-x-4">
             <div className="relative">
               {user.user_metadata?.avatar_url ? (
@@ -133,18 +130,18 @@ export default function MyProfile() {
 
         {/* 알림 메시지 */}
         {actionData && 'success' in actionData && actionData.success && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl">
+          <div className="mb-6 bg-green-100/90 backdrop-blur-sm border border-green-300 text-green-800 px-4 py-3 rounded-2xl shadow-lg">
             {actionData.message}
           </div>
         )}
         {actionData && 'error' in actionData && actionData.error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl">
+          <div className="mb-6 bg-red-100/90 backdrop-blur-sm border border-red-300 text-red-800 px-4 py-3 rounded-2xl shadow-lg">
             {actionData.error}
           </div>
         )}
 
         {/* 마케팅 동의 설정 */}
-        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-xl">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 설정</h3>
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -177,7 +174,7 @@ export default function MyProfile() {
             <Link
               key={item.href}
               to={item.href}
-              className="block bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow"
+              className="block bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200"
             >
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-xl">
@@ -207,7 +204,7 @@ export default function MyProfile() {
             </Button>
           </Form>
         </div>
-      </main>
+      </div>
     </div>
   )
 } 
