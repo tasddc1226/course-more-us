@@ -212,7 +212,7 @@ export default function AdminUsers() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8">
-                          {user.user_metadata.avatar_url ? (
+                          {user.user_metadata?.avatar_url && typeof user.user_metadata.avatar_url === 'string' ? (
                             <img
                               className="h-8 w-8 rounded-full"
                               src={user.user_metadata.avatar_url}
@@ -230,11 +230,14 @@ export default function AdminUsers() {
                           <div className="text-sm font-medium text-gray-900">
                             {user.email}
                           </div>
-                          {user.user_metadata.full_name && (
-                            <div className="text-sm text-gray-500">
-                              {user.user_metadata.full_name}
-                            </div>
-                          )}
+                          {(() => {
+                            const fullName = user.user_metadata?.full_name;
+                            return typeof fullName === 'string' ? (
+                              <div className="text-sm text-gray-500">
+                                {fullName}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </td>
@@ -251,7 +254,7 @@ export default function AdminUsers() {
                       {formatDate(new Date(user.created_at || ''))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.user_metadata.user_places?.length || 0}
+                      {user.placesCount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">

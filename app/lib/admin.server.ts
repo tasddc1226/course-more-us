@@ -194,9 +194,10 @@ type AdminUserSummary = {
   email: string
   created_at: string | null
   last_sign_in_at: string | null
-  user_metadata: Record<string, any>
-  app_metadata: Record<string, any>
+  user_metadata: Record<string, unknown>
+  app_metadata: Record<string, unknown>
   role: 'admin' | 'user'
+  placesCount: number
 }
 
 // ===== 유저 관리 함수들 =====
@@ -220,19 +221,38 @@ export async function getAllUsers(request: Request) {
     (roleRows as Array<{ user_id: string; role: string | null }>).map((r) => [r.user_id, (r.role ?? 'user') as 'admin' | 'user'])
   )
 
-  // 3) Auth 사용자 정보와 역할을 병합
-  const users: AdminUserSummary[] = authUsers.map((u: any) => ({
+  // 3) 각 유저별 등록한 장소 수 집계
+  const userPlaceCounts = new Map<string, number>()
+  
+  // 유저별 장소 개수 집계
+  for (const user of authUsers) {
+    const { count, error: countError } = await supabaseAdmin
+      .from('places')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('source', 'user')
+    
+    if (!countError && count !== null) {
+      userPlaceCounts.set(user.id, count)
+    } else {
+      userPlaceCounts.set(user.id, 0)
+    }
+  }
+
+  // 4) Auth 사용자 정보와 역할, 장소 수를 병합
+  const users: AdminUserSummary[] = authUsers.map((u) => ({
     id: u.id,
     email: u.email ?? '',
     created_at: u.created_at,
-    last_sign_in_at: u.last_sign_in_at,
+    last_sign_in_at: u.last_sign_in_at ?? null,
     user_metadata: u.user_metadata ?? {},
     app_metadata: u.app_metadata ?? {},
     role: roleMap.get(u.id) ?? 'user',
+    placesCount: userPlaceCounts.get(u.id) ?? 0,
   }))
 
   // 관리 편의상 최근 가입 순으로 정렬
-  users.sort((a: AdminUserSummary, b: AdminUserSummary) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+  users.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
 
   return users
 }
