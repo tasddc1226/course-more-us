@@ -3,7 +3,6 @@ import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useSearchParams } from "@remix-run/react";
 import { useState } from "react";
 import { createInitialAgreements } from "~/lib/agreements.server";
-import { Button } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import { AGREEMENT_TYPES, AGREEMENT_LABELS } from "~/constants/agreements";
 
@@ -43,8 +42,8 @@ export async function action({ request }: ActionFunctionArgs) {
         true, // privacy_agreed  
         marketingAgreed // marketing_agreed
       )
-    } catch (agreementError) {
-      console.error('동의 정보 저장 실패:', agreementError)
+          } catch (agreementError) {
+        // 동의 정보 저장 실패 시 에러 로깅
     }
     return redirect(ROUTES.HOME);
   } else if (provider === 'kakao') {
@@ -134,9 +133,9 @@ export default function AuthTerms() {
                   type="checkbox"
                   name="terms_agreed"
                   checked={termsAgreed}
+                  aria-labelledby="terms-label"
                   onChange={(e) => setTermsAgreed(e.target.checked)}
                   className="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 mt-0.5"
-                  aria-label="서비스 이용약관 동의"
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center justify-between">
@@ -168,6 +167,7 @@ export default function AuthTerms() {
                   checked={privacyAgreed}
                   onChange={(e) => setPrivacyAgreed(e.target.checked)}
                   className="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 mt-0.5"
+                  aria-labelledby="privacy-label"
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center justify-between">
@@ -196,6 +196,7 @@ export default function AuthTerms() {
                   type="checkbox"
                   name="marketing_agreed"
                   checked={marketingAgreed}
+                  aria-labelledby="marketing-label"
                   onChange={(e) => setMarketingAgreed(e.target.checked)}
                   className="w-5 h-5 text-purple-600 border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 mt-0.5"
                 />

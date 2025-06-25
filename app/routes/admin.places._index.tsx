@@ -3,6 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Link, useFetcher } from "@remix-run/react";
 import { getAllPlaces, deletePlace } from "~/lib/admin.server";
 import { Button } from "~/components/ui";
+import { PageHeader } from "~/components/common";
 import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
@@ -45,27 +46,20 @@ export default function AdminPlaces() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link
-                to={ROUTES.ADMIN}
-                className="text-purple-600 hover:text-purple-700"
-              >
-                ← 관리자 대시보드
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-900">장소 관리</h1>
-            </div>
-            <Link to={ROUTES.ADMIN_PLACES_NEW}>
-              <Button>
-                + 새 장소 추가
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PageHeader 
+        title="장소 관리"
+        backLink={{
+          to: ROUTES.ADMIN,
+          text: "관리자 대시보드"
+        }}
+        rightContent={
+          <Link to={ROUTES.ADMIN_PLACES_NEW}>
+            <Button>
+              + 새 장소 추가
+            </Button>
+          </Link>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {places.length === 0 ? (

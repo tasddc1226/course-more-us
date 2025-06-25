@@ -3,6 +3,7 @@ import { json } from "@remix-run/node";
 import { useLoaderData, Link, Form } from "@remix-run/react";
 import { requireAdmin, getAllPlaces } from "~/lib/admin.server";
 import { Button } from "~/components/ui";
+import { PageHeader } from "~/components/common";
 import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
@@ -29,34 +30,29 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-purple-600">코스모스 관리자</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">관리자: {user.email}</span>
-              <Link
-                to={ROUTES.HOME}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+      <PageHeader 
+        title="코스모스 관리자"
+        rightContent={
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-700">관리자: {user.email}</span>
+            <Link
+              to={ROUTES.HOME}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+            >
+              사용자 페이지로
+            </Link>
+            <Form method="post" action={ROUTES.LOGOUT}>
+              <Button
+                type="submit"
+                variant="danger"
+                size="sm"
               >
-                사용자 페이지로
-              </Link>
-              <Form method="post" action={ROUTES.LOGOUT}>
-                <Button
-                  type="submit"
-                  variant="danger"
-                  size="sm"
-                >
-                  로그아웃
-                </Button>
-              </Form>
-            </div>
+                로그아웃
+              </Button>
+            </Form>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 통계 카드 */}

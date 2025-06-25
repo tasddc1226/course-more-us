@@ -43,7 +43,6 @@ export function useSocialLogin(options: UseSocialLoginOptions = {}) {
         };
         
         const errorMessage = `${providerNames[provider]} 로그인 중 오류가 발생했습니다: ${error.message}`;
-        console.error(`${provider} 로그인 오류:`, error);
         
         if (onError) {
           onError(errorMessage);
@@ -67,7 +66,6 @@ export function useSocialLogin(options: UseSocialLoginOptions = {}) {
       };
       
       const errorMessage = `${providerNames[provider]} 로그인 중 예외가 발생했습니다.`;
-      console.error(`${provider} 로그인 예외:`, error);
       
       if (onError) {
         onError(errorMessage);

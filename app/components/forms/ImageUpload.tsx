@@ -255,7 +255,7 @@ export default function ImageUpload({
                   dataTransfer.items.add(preview.compressed)
                   input.files = dataTransfer.files
                 } catch (error) {
-                  console.warn('Failed to set compressed file:', error)
+                  // 압축된 파일 설정 실패 시 무시
                 }
               }
             }}

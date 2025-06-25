@@ -21,14 +21,14 @@ export function clearAuthCookies() {
     localStorage.removeItem('sb-access-token')
     localStorage.removeItem('sb-refresh-token')
   } catch (error) {
-    console.warn('LocalStorage 클리어 실패:', error)
+    // LocalStorage 클리어 실패 시 무시 (보안상 중요하지 않음)
   }
 
   // sessionStorage도 클리어
   try {
     sessionStorage.clear()
   } catch (error) {
-    console.warn('SessionStorage 클리어 실패:', error)
+    // SessionStorage 클리어 실패 시 무시 (보안상 중요하지 않음)
   }
 }
 

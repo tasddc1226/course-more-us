@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { getCategories } from '~/lib/recommendation.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
 import { Button } from '~/components/ui'
-import { ClientOnlyKakaoMap } from '~/components/common'
+import { ClientOnlyKakaoMap, PageHeader } from '~/components/common'
 import { ImageUpload } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
 import { requireAuth } from '~/lib/auth.server'
@@ -83,7 +83,7 @@ export async function action({ request }: ActionFunctionArgs) {
         const imageUrl = await uploadPlaceImage(request, file)
         images.push(imageUrl)
       } catch (uploadError) {
-        console.error('Error uploading compressed image:', uploadError)
+        // 이미지 업로드 오류 처리
         return json({ 
           error: '이미지 업로드 중 오류가 발생했습니다.',
           values: Object.fromEntries(formData)
@@ -109,7 +109,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return redirect(ROUTES.MY_PLACES)
   } catch (error) {
-    console.error('Error creating place:', error)
+    // 장소 생성 오류 처리
     return json({ 
       error: error instanceof Error ? error.message : '장소 등록 중 오류가 발생했습니다.',
       values: Object.fromEntries(formData)
@@ -133,13 +133,7 @@ export default function RegisterPlace() {
   if (todayCount >= 3) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <h1 className="text-2xl font-bold text-gray-900">장소 등록</h1>
-            </div>
-          </div>
-        </header>
+        <PageHeader title="장소 등록" />
         
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-white shadow rounded-lg p-6 text-center">
@@ -162,25 +156,14 @@ export default function RegisterPlace() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link
-                to={ROUTES.HOME}
-                className="text-purple-600 hover:text-purple-700"
-              >
-                ← 홈으로
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-900">장소 등록</h1>
-            </div>
-            <div className="text-sm text-gray-500">
-              오늘 등록: {todayCount}/3
-            </div>
-          </div>
-        </div>
-      </header>
+      <PageHeader 
+        title="장소 등록"
+        backLink={{
+          to: ROUTES.HOME,
+          text: "홈으로"
+        }}
+        rightContent={`오늘 등록: ${todayCount}/3`}
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white shadow rounded-lg">

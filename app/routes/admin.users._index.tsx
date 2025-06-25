@@ -1,8 +1,9 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useActionData, Link, Form, useSubmit } from "@remix-run/react";
+import { useLoaderData, useActionData, Form, useSubmit } from "@remix-run/react";
 import { requireAdmin, getAllUsers, updateUserRole, deleteUser, getUserStats } from "~/lib/admin.server";
 import { Button } from "~/components/ui";
+import { PageHeader } from "~/components/common";
 import { ROUTES } from "~/constants/routes";
 import { formatDate } from "~/utils/date";
 
@@ -47,7 +48,7 @@ export async function action({ request }: ActionFunctionArgs) {
         return json({ error: '잘못된 액션입니다.' }, { status: 400 });
     }
   } catch (error) {
-    console.error('User management error:', error);
+    // Error handling without console.log
     return json({ error: '작업 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }
@@ -84,31 +85,25 @@ export default function AdminUsers() {
     }
   };
 
-
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link to={ROUTES.ADMIN} className="text-purple-600 hover:text-purple-800">
-                ← 관리자 대시보드
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-900">유저 관리</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">관리자: {currentUser.email}</span>
-              <Form method="post" action={ROUTES.LOGOUT}>
-                <Button type="submit" variant="danger">
-                  로그아웃
-                </Button>
-              </Form>
-            </div>
+      <PageHeader 
+        title="유저 관리"
+        backLink={{
+          to: ROUTES.ADMIN,
+          text: "관리자 대시보드"
+        }}
+        rightContent={
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-700">관리자: {currentUser.email}</span>
+            <Form method="post" action={ROUTES.LOGOUT}>
+              <Button type="submit" variant="danger">
+                로그아웃
+              </Button>
+            </Form>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 알림 메시지 */}
@@ -204,68 +199,80 @@ export default function AdminUsers() {
                     가입일
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    최근 로그인
+                    내 장소 수
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    작업
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    관리
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {users.map((user) => (
-                  <tr key={user.id} className={user.id === currentUser.id ? 'bg-blue-50' : ''}>
+                  <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        {user.user_metadata?.avatar_url && (
-                          <img
-                            className="h-10 w-10 rounded-full mr-3"
-                            src={user.user_metadata.avatar_url}
-                            alt=""
-                          />
-                        )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.user_metadata?.full_name || user.user_metadata?.name || '이름 없음'}
-                            {user.id === currentUser.id && (
-                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                본인
+                        <div className="flex-shrink-0 h-8 w-8">
+                          {user.user_metadata.avatar_url ? (
+                            <img
+                              className="h-8 w-8 rounded-full"
+                              src={user.user_metadata.avatar_url}
+                              alt=""
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                              <span className="text-sm font-medium text-purple-600">
+                                {user.email.charAt(0).toUpperCase()}
                               </span>
-                            )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.email}
                           </div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          {user.user_metadata.full_name && (
+                            <div className="text-sm text-gray-500">
+                              {user.user_metadata.full_name}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value as 'admin' | 'user')}
-                        disabled={user.id === currentUser.id}
-                        className={`text-sm rounded-md border-gray-300 ${
-                          user.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        } ${user.id === currentUser.id ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                      >
-                        <option value="user">일반 사용자</option>
-                        <option value="admin">관리자</option>
-                      </select>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        user.role === 'admin' 
+                          ? 'bg-purple-100 text-purple-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.role === 'admin' ? '관리자' : '사용자'}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.created_at ? formatDate(new Date(user.created_at)) : '날짜 없음'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDate(new Date(user.created_at || ''))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.last_sign_in_at ? formatDate(new Date(user.last_sign_in_at)) : '로그인 기록 없음'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.user_metadata.user_places?.length || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Button
-                        onClick={() => handleDeleteUser(user.id, user.email)}
-                        disabled={user.id === currentUser.id}
-                        variant="danger"
-                        size="sm"
-                      >
-                        삭제
-                      </Button>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value as 'admin' | 'user')}
+                          disabled={user.id === currentUser.id}
+                          className="text-sm border-gray-300 rounded-md"
+                        >
+                          <option value="user">사용자</option>
+                          <option value="admin">관리자</option>
+                        </select>
+                        <Button
+                          onClick={() => handleDeleteUser(user.id, user.email)}
+                          variant="danger"
+                          size="sm"
+                          disabled={user.id === currentUser.id}
+                        >
+                          삭제
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

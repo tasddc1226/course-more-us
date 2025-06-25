@@ -81,7 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return redirect(`/admin/places`);
   } catch (error) {
-    console.error('Error creating place:', error);
+    // Error handling without console.log
     return json({ 
       error: '장소 생성 중 오류가 발생했습니다.',
       values: Object.fromEntries(formData)
@@ -92,8 +92,6 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function NewPlace() {
   const { regions, categories, timeSlots } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  
-
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -199,175 +197,124 @@ export default function NewPlace() {
               />
             </div>
 
-            {/* 주소 및 위치 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-1">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                  주소 <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="address"
-                  name="address"
-                  rows={2}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="정확한 주소를 입력하세요"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-2">
-                  위도 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="latitude"
-                  name="latitude"
-                  step="any"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="37.5665"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-2">
-                  경도 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="longitude"
-                  name="longitude"
-                  step="any"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="126.9780"
-                />
-              </div>
-            </div>
-
-            {/* 연락처 및 웹사이트 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 위치 정보 */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">위치 정보</h3>
               <div>
                 <Input
-                  label="전화번호"
-                  type="tel"
-                  name="phone"
-                  placeholder="02-1234-5678"
+                  label="주소"
+                  name="address"
+                  required
+                  placeholder="전체 주소를 입력하세요"
                 />
               </div>
-
-              <div>
-                <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-2">
-                  웹사이트
-                </label>
-                <input
-                  type="url"
-                  id="website"
-                  name="website"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="https://example.com"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Input
+                    label="위도"
+                    type="number"
+                    name="latitude"
+                    step="any"
+                    required
+                    placeholder="37.123456"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="경도"
+                    type="number"
+                    name="longitude"
+                    step="any"
+                    required
+                    placeholder="127.123456"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* 가격대 및 옵션 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label htmlFor="price_range" className="block text-sm font-medium text-gray-700 mb-2">
-                  가격대
-                </label>
-                <select
-                  id="price_range"
-                  name="price_range"
-                  defaultValue="2"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="1">1 - 저렴</option>
-                  <option value="2">2 - 보통</option>
-                  <option value="3">3 - 비싼편</option>
-                  <option value="4">4 - 매우 비싼</option>
-                </select>
+            {/* 연락처 정보 */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">연락처 정보</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Input
+                    label="전화번호"
+                    name="phone"
+                    placeholder="02-123-4567"
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="웹사이트"
+                    name="website"
+                    placeholder="https://example.com"
+                  />
+                </div>
               </div>
+            </div>
 
-              <div className="flex items-center space-x-6">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="is_partnership"
-                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">제휴 장소</span>
-                </label>
+            {/* 가격 및 설정 */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">가격 및 설정</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="price_range" className="block text-sm font-medium text-gray-700 mb-2">
+                    가격대 (1~5)
+                  </label>
+                  <select
+                    id="price_range"
+                    name="price_range"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="1">💰 저렴함</option>
+                    <option value="2">💰💰 보통</option>
+                    <option value="3">💰💰💰 비쌈</option>
+                    <option value="4">💰💰💰💰 매우 비쌈</option>
+                    <option value="5">💰💰💰💰💰 최고급</option>
+                  </select>
+                </div>
 
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="is_active"
-                    defaultChecked
-                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">활성 상태</span>
-                </label>
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      name="is_partnership"
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span>제휴 장소</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      defaultChecked
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span>활성화</span>
+                  </label>
+                </div>
               </div>
             </div>
 
             {/* 태그 */}
             <div>
-              <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
-                태그 (쉼표로 구분)
-              </label>
-              <input
-                type="text"
-                id="tags"
+              <Input
+                label="태그 (콤마로 구분)"
                 name="tags"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="카페, 디저트, 모던, 깔끔"
+                placeholder="로맨틱, 야경, 조용함"
               />
-            </div>
-
-            {/* 시간대 선택 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">
-                추천 시간대 (우선순위 포함)
-              </label>
-              <div className="space-y-3">
-                {timeSlots.map((timeSlot) => (
-                  <div key={timeSlot.id} className="flex items-center space-x-4">
-                    <label className="flex items-center min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        name="time_slots"
-                        value={timeSlot.id}
-                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">
-                        {timeSlot.name} ({timeSlot.start_time} - {timeSlot.end_time})
-                      </span>
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <label className="text-sm text-gray-500">우선순위:</label>
-                      <select
-                        name={`priority_${timeSlot.id}`}
-                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                        defaultValue="1"
-                      >
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                각 태그를 콤마(,)로 구분해서 입력하세요.
+              </p>
             </div>
 
             {/* 영업시간 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">
-                영업시간
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">영업시간</h3>
+              <div className="grid grid-cols-1 gap-4">
                 {[
                   { key: 'monday', label: '월요일' },
                   { key: 'tuesday', label: '화요일' },
@@ -377,14 +324,45 @@ export default function NewPlace() {
                   { key: 'saturday', label: '토요일' },
                   { key: 'sunday', label: '일요일' },
                 ].map(({ key, label }) => (
-                  <div key={key} className="flex items-center space-x-2">
-                    <label className="w-16 text-sm text-gray-700">{label}:</label>
-                    <input
-                      type="text"
+                  <div key={key} className="flex items-center space-x-4">
+                    <div className="w-20 text-sm font-medium text-gray-700">
+                      {label}
+                    </div>
+                    <Input
                       name={`hours_${key}`}
-                      defaultValue={actionData?.values?.[`hours_${key}`] || ''}
-                      className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                      placeholder="09:00-22:00 또는 휴무"
+                      placeholder="09:00-18:00 또는 휴무"
+                      className="flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 시간대 선택 */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">추천 시간대</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {timeSlots.map((timeSlot) => (
+                  <div key={timeSlot.id} className="space-y-2">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        name="time_slots"
+                        value={timeSlot.id}
+                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        {timeSlot.name}
+                      </span>
+                    </label>
+                    <Input
+                      label="우선순위"
+                      type="number"
+                      name={`priority_${timeSlot.id}`}
+                      min={1}
+                      max={10}
+                      defaultValue="5"
+                      className="w-16"
                     />
                   </div>
                 ))}
@@ -394,7 +372,7 @@ export default function NewPlace() {
             {/* 제출 버튼 */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
               <Link to={ROUTES.ADMIN_PLACES}>
-                <Button variant="outline">
+                <Button variant="secondary">
                   취소
                 </Button>
               </Link>
