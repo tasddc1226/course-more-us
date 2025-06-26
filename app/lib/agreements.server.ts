@@ -44,27 +44,36 @@ export async function upsertUserAgreements(
 ): Promise<UserAgreement> {
   const { user } = await requireAuth(request)
   
+  // 기존 동의 정보 조회
+  const currentAgreements = await getUserAgreements(request)
+  
   const now = new Date().toISOString()
   const updateData: Omit<UserAgreement, 'id' | 'created_at'> = {
     user_id: user.id,
-    terms_agreed: agreements.terms_agreed ?? false,
-    privacy_agreed: agreements.privacy_agreed ?? false,
-    marketing_agreed: agreements.marketing_agreed ?? false,
-    terms_agreed_at: null,
-    privacy_agreed_at: null,
-    marketing_agreed_at: null,
+    terms_agreed: agreements.terms_agreed ?? currentAgreements?.terms_agreed ?? false,
+    privacy_agreed: agreements.privacy_agreed ?? currentAgreements?.privacy_agreed ?? false,
+    marketing_agreed: agreements.marketing_agreed ?? currentAgreements?.marketing_agreed ?? false,
+    // 기존 동의 시점 보존
+    terms_agreed_at: currentAgreements?.terms_agreed_at ?? null,
+    privacy_agreed_at: currentAgreements?.privacy_agreed_at ?? null,
+    marketing_agreed_at: currentAgreements?.marketing_agreed_at ?? null,
     updated_at: now,
   }
   
-  // 동의 시간 설정
-  if (agreements.terms_agreed === true) {
+  // 새로 동의한 항목만 동의 시간 업데이트
+  if (agreements.terms_agreed === true && !currentAgreements?.terms_agreed) {
     updateData.terms_agreed_at = now
   }
-  if (agreements.privacy_agreed === true) {
+  if (agreements.privacy_agreed === true && !currentAgreements?.privacy_agreed) {
     updateData.privacy_agreed_at = now
   }
-  if (agreements.marketing_agreed === true) {
+  if (agreements.marketing_agreed === true && !currentAgreements?.marketing_agreed) {
     updateData.marketing_agreed_at = now
+  }
+  
+  // 동의 철회 시 동의 시점 제거
+  if (agreements.marketing_agreed === false) {
+    updateData.marketing_agreed_at = null
   }
   
   const { data, error } = await supabaseAdmin
@@ -75,11 +84,11 @@ export async function upsertUserAgreements(
     })
     .select()
     .single()
-  
+
   if (error) {
     throw new Error('동의 정보 저장 실패: ' + error.message)
   }
-  
+
   return data
 }
 
@@ -102,7 +111,10 @@ export async function toggleMarketingAgreement(request: Request): Promise<UserAg
   const currentAgreements = await getUserAgreements(request)
   const newMarketingAgreed = !currentAgreements?.marketing_agreed
   
+  // 기존 필수 동의 정보는 유지하면서 마케팅 동의만 변경
   return upsertUserAgreements(request, {
+    terms_agreed: currentAgreements?.terms_agreed ?? true,
+    privacy_agreed: currentAgreements?.privacy_agreed ?? true,
     marketing_agreed: newMarketingAgreed
   })
 } 

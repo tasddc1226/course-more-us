@@ -1,10 +1,14 @@
-import type { MetaFunction, LoaderFunctionArgs } from '@remix-run/node'
+import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
-import { useLoaderData, Link, Form } from '@remix-run/react'
+import { useLoaderData, Link, Form, useActionData, useSubmit } from '@remix-run/react'
 import { requireAuth } from '~/lib/auth.server'
 import { isAdmin } from '~/lib/admin.server'
+import { getUserAgreements, toggleMarketingAgreement } from '~/lib/agreements.server'
+import { getUserProfile } from '~/lib/profile.server'
 import { Button } from '~/components/ui'
+
 import { ROUTES } from '~/constants/routes'
+import { formatDate } from '~/utils/date'
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,14 +20,57 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   const { user } = await requireAuth(request)
   const userIsAdmin = await isAdmin(request)
+  const agreements = await getUserAgreements(request)
+  const profile = await getUserProfile(request)
   
-  return json({ user, isAdmin: userIsAdmin })
+  return json({ 
+    user, 
+    profile,
+    isAdmin: userIsAdmin,
+    marketingAgreed: agreements?.marketing_agreed ?? false,
+    marketingAgreedAt: agreements?.marketing_agreed_at ?? null
+  })
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData()
+  const action = formData.get('action')
+
+  try {
+    switch (action) {
+      case 'toggleMarketing': {
+        await toggleMarketingAgreement(request)
+        return json({ success: true, message: '마케팅 수신 동의 설정이 변경되었습니다.' })
+      }
+      default:
+        return json({ error: '잘못된 액션입니다.' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error(error)
+    return json({ 
+      error: error instanceof Error ? error.message : '설정 변경 중 오류가 발생했습니다.' 
+    }, { status: 500 })
+  }
 }
 
 export default function MyProfile() {
-  const { user, isAdmin: userIsAdmin } = useLoaderData<typeof loader>()
+  const { user, profile, isAdmin: userIsAdmin, marketingAgreed, marketingAgreedAt } = useLoaderData<typeof loader>()
+  const actionData = useActionData<typeof action>()
+  const submit = useSubmit()
+
+  const handleMarketingToggle = () => {
+    const formData = new FormData()
+    formData.append('action', 'toggleMarketing')
+    submit(formData, { method: 'post' })
+  }
 
   const menuItems = [
+    {
+      title: '내 정보 보기',
+      description: '프로필 정보 확인 및 수정',
+      icon: '👤',
+      href: ROUTES.MY_INFO,
+    },
     {
       title: '내 장소',
       description: '등록한 데이트 장소 관리',
@@ -45,28 +92,30 @@ export default function MyProfile() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
       {/* 헤더 */}
-      <header className="bg-white shadow-sm">
+      <div className="bg-white/10 backdrop-blur-sm">
         <div className="max-w-md mx-auto px-4 py-4 flex items-center">
           <Link
             to={ROUTES.HOME}
-            className="text-purple-600 hover:text-purple-700 mr-4"
+            className="mr-4 text-white/90 hover:text-white transition-colors"
+            aria-label="뒤로가기"
           >
-            ← 홈으로
+            ←
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">마이 페이지</h1>
+          <h1 className="text-lg font-semibold text-white">마이 페이지</h1>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-md mx-auto px-4 py-6">
+
         {/* 프로필 섹션 */}
-        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-xl">
           <div className="flex items-center space-x-4">
             <div className="relative">
-              {user.user_metadata?.avatar_url ? (
+              {profile?.avatar_url || user.user_metadata?.avatar_url ? (
                 <img
-                  src={user.user_metadata.avatar_url}
+                  src={profile?.avatar_url || user.user_metadata?.avatar_url}
                   alt="프로필"
                   className="w-16 h-16 rounded-full"
                 />
@@ -83,7 +132,7 @@ export default function MyProfile() {
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-gray-900">
-                {user.user_metadata?.full_name || '사용자'}
+                {profile?.nickname || user.user_metadata?.full_name || '사용자'}
               </h2>
               <p className="text-sm text-gray-500">{user.email}</p>
               {user.app_metadata?.provider && (
@@ -97,13 +146,53 @@ export default function MyProfile() {
           </div>
         </div>
 
+        {/* 알림 메시지 */}
+        {actionData && 'success' in actionData && actionData.success && (
+          <div className="mb-6 bg-green-100/90 backdrop-blur-sm border border-green-300 text-green-800 px-4 py-3 rounded-2xl shadow-lg">
+            {actionData.message}
+          </div>
+        )}
+        {actionData && 'error' in actionData && actionData.error && (
+          <div className="mb-6 bg-red-100/90 backdrop-blur-sm border border-red-300 text-red-800 px-4 py-3 rounded-2xl shadow-lg">
+            {actionData.error}
+          </div>
+        )}
+
+        {/* 마케팅 동의 설정 */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-xl">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 설정</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900">마케팅 정보 수신</h4>
+              <p className="text-sm text-gray-500 mt-1" id="marketing-description">
+                새로운 데이트 코스나 이벤트 정보를 받아보실 수 있습니다.
+              </p>
+              {marketingAgreed && marketingAgreedAt && (
+                <p className="text-xs text-gray-400 mt-1">
+                  동의 시점: {formatDate(new Date(marketingAgreedAt))}
+                </p>
+              )}
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer" aria-label="마케팅 정보 수신 동의 토글">
+              <input
+                type="checkbox"
+                checked={marketingAgreed}
+                onChange={handleMarketingToggle}
+                className="sr-only peer"
+                aria-describedby="marketing-description"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+        </div>
+
         {/* 메뉴 섹션 */}
         <div className="space-y-3">
           {menuItems.map((item) => (
             <Link
               key={item.href}
               to={item.href}
-              className="block bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow"
+              className="block bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200"
             >
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-xl">
@@ -133,7 +222,7 @@ export default function MyProfile() {
             </Button>
           </Form>
         </div>
-      </main>
+      </div>
     </div>
   )
 } 

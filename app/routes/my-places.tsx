@@ -65,9 +65,9 @@ export default function MyPlaces() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
       {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
+              <header className="bg-white/90 backdrop-blur-sm shadow-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">

@@ -86,25 +86,19 @@ export default function AuthTerms() {
   const isSubmitEnabled = termsAgreed && privacyAgreed;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 relative">
-      {/* 배경 하트 패턴 */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 right-20 text-pink-300 text-8xl">♡</div>
-        <div className="absolute bottom-32 left-16 text-pink-300 text-6xl">♡</div>
-        <div className="absolute top-1/3 left-1/4 text-pink-300 text-4xl">♡</div>
-        <div className="absolute bottom-1/4 right-1/3 text-pink-300 text-5xl">♡</div>
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 flex flex-col items-center justify-center px-4 relative">
       <div className="w-full max-w-md relative z-10">
         {/* 로고 및 제목 */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">서비스 이용 동의</h1>
-          <p className="text-gray-600">
+          <h1 className="text-4xl font-bold text-white mb-2">서비스 이용 동의</h1>
+          <p className="text-white/90">
             {provider === 'kakao' ? '카카오로 회원가입하기 전' : '회원가입하기 전'} 약관에 동의해주세요
           </p>
         </div>
 
-        <Form method="post" className="space-y-6">
+        {/* 메인 폼 컨테이너 */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl">
+          <Form method="post" className="space-y-6">
           <input type="hidden" name="next" value={next} />
           {provider && <input type="hidden" name="provider" value={provider} />}
           
@@ -241,6 +235,7 @@ export default function AuthTerms() {
             </Link>
           </div>
         </Form>
+        </div>
       </div>
     </div>
   );
