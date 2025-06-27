@@ -1,11 +1,11 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@remix-run/node'
 import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-run/react'
 import { useState } from 'react'
-import { getCategories } from '~/lib/recommendation.server'
+import { getCategories, getTimeSlots } from '~/lib/recommendation.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
 import { Button } from '~/components/ui'
 import { ClientOnlyKakaoMap, PageHeader } from '~/components/common'
-import { ImageUpload } from '~/components/forms'
+import { ImageUpload, StarRating } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
 import { requireAuth } from '~/lib/auth.server'
 import type { PlaceLocationData } from '~/types/kakao-map'
@@ -20,12 +20,13 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAuth(request)
   
-  const [categories, todayCount] = await Promise.all([
+  const [categories, todayCount, timeSlots] = await Promise.all([
     getCategories(request),
-    getTodayPlaceCount(request)
+    getTodayPlaceCount(request),
+    getTimeSlots(request)
   ])
 
-  return json({ categories, todayCount })
+  return json({ categories, todayCount, timeSlots })
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -91,6 +92,19 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     }
 
+    // 별점 처리
+    const rating = parseFloat(formData.get('rating') as string)
+    if (!rating || rating < 0.5 || rating > 5) {
+      return json({ 
+        error: '별점을 선택해주세요 (0.5 ~ 5.0점)',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    // 시간대 정보 처리
+    const selectedTimeSlot = formData.get('selectedTimeSlot') ? parseInt(formData.get('selectedTimeSlot') as string) : undefined
+    const selectedPeriod = formData.get('selectedPeriod') as 'weekday' | 'weekend' | undefined
+
     // 장소 데이터 구성
     const placeData = {
       placeName,
@@ -100,8 +114,11 @@ export async function action({ request }: ActionFunctionArgs) {
       longitude,
       category_id: parseInt(formData.get('category_id') as string),
       description: formData.get('description') as string,
+      rating,
       tags,
-      images
+      images,
+      selectedTimeSlot,
+      selectedPeriod
     }
 
     // 장소 생성
@@ -118,7 +135,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RegisterPlace() {
-  const { categories, todayCount } = useLoaderData<typeof loader>()
+  const { categories, todayCount, timeSlots } = useLoaderData<typeof loader>()
   const actionData = useActionData<typeof action>()
   const navigation = useNavigation()
   const isSubmitting = navigation.state === 'submitting'
@@ -128,6 +145,19 @@ export default function RegisterPlace() {
   
   // 압축된 이미지 파일들
   const [compressedImages, setCompressedImages] = useState<File[]>([])
+  
+  // 별점
+  const [rating, setRating] = useState<number>(
+    actionData?.values?.rating ? parseFloat(actionData.values.rating as string) : 0
+  )
+
+  // 운영시간 UI용 상태
+  const [selectedPeriod, setSelectedPeriod] = useState<'weekday' | 'weekend'>('weekday')
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<number | null>(null)
+
+  const selectTimeSlot = (timeSlotId: number) => {
+    setSelectedTimeSlot(selectedTimeSlot === timeSlotId ? null : timeSlotId)
+  }
 
   // 일일 제한 체크
   if (todayCount >= 3) {
@@ -237,6 +267,97 @@ export default function RegisterPlace() {
               </select>
             </div>
 
+            {/* 별점 */}
+            <div>
+              <div className="block text-sm font-medium text-gray-700 mb-3">
+                장소 평점 <span className="text-red-500">*</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <StarRating
+                  value={rating}
+                  onChange={setRating}
+                  size="md"
+                />
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">선택한 평점:</span> {rating.toFixed(1)}점 / 5.0점
+                </div>
+              </div>
+              <input type="hidden" name="rating" value={rating} />
+              <p className="text-xs text-gray-500 mt-2">
+                이 장소에 대한 평가를 선택해주세요
+              </p>
+            </div>
+
+            {/* 운영시간 정보 */}
+            <div>
+              <div className="block text-sm font-medium text-gray-700 mb-3">
+                운영시간 정보
+              </div>
+              <div className="text-sm text-amber-600 mb-4 flex items-center gap-2">
+                <span>💡</span>
+                <span>직접 갔었던 시간대를 입력해주세요</span>
+              </div>
+
+              {/* 방문 시기 */}
+              <div className="mb-4">
+                <div className="block text-sm font-medium text-gray-700 mb-2">방문 시기</div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriod('weekday')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      selectedPeriod === 'weekday'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    평일 (월-금)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriod('weekend')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      selectedPeriod === 'weekend'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    주말 (토-일)
+                  </button>
+                </div>
+              </div>
+
+              {/* 방문했던 시간대 */}
+              <div className="mb-4">
+                <div className="block text-sm font-medium text-gray-700 mb-2">방문했던 시간대</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {timeSlots.map((timeSlot) => (
+                    <button
+                      key={timeSlot.id}
+                      type="button"
+                      onClick={() => selectTimeSlot(timeSlot.id)}
+                      className={`p-3 text-sm font-medium rounded-lg border text-left transition-colors ${
+                        selectedTimeSlot === timeSlot.id
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="font-medium">{timeSlot.id}. {timeSlot.name}</div>
+                    </button>
+                  ))}
+                </div>
+                {selectedTimeSlot && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    선택된 시간대: {selectedTimeSlot}번
+                  </div>
+                )}
+              </div>
+
+              {/* 선택된 정보를 hidden input으로 전송 */}
+              <input type="hidden" name="selectedTimeSlot" value={selectedTimeSlot || ''} />
+              <input type="hidden" name="selectedPeriod" value={selectedPeriod} />
+            </div>
+
             {/* 한줄 설명 */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -289,7 +410,7 @@ export default function RegisterPlace() {
               </Link>
               <Button 
                 type="submit" 
-                disabled={isSubmitting || !selectedLocation || compressedImages.length === 0}
+                disabled={isSubmitting || !selectedLocation || compressedImages.length === 0 || rating === 0}
               >
                 {isSubmitting ? '등록 중...' : '장소 등록'}
               </Button>
