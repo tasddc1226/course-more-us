@@ -2,11 +2,228 @@ import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from "@remi
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, Link, Form } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
-import { getRegions, getTimeSlots, getRecommendations } from "~/lib/recommendation.server";
+import { getRegions, getTimeSlots, getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
 import { getUserProfile } from "~/lib/profile.server";
 import { Button, Calendar } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
+import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
+import type { Tables } from "~/types/database.types";
+
+// 추천 결과 UI를 위한 타입 정의
+type TimeSlot = Tables<'time_slots'>;
+type PlaceWithTimeSlots = RecommendedPlace & {
+  place_time_slots?: Array<{
+    time_slot_id: number;
+    priority?: number;
+  }>;
+  place_images?: Array<{
+    image_url: string;
+    alt_text?: string;
+  }>;
+  categories?: {
+    name: string;
+    icon?: string;
+  };
+  tags?: string[];
+};
+
+type TimeSlotGroup = {
+  timeSlot: TimeSlot;
+  places: PlaceWithTimeSlots[];
+};
+
+// 시간대별로 장소를 그룹화하는 헬퍼 함수
+function groupPlacesByTimeSlot(
+  places: PlaceWithTimeSlots[], 
+  timeSlots: TimeSlot[],
+  selectedTimeSlotIds: number[]
+): TimeSlotGroup[] {
+  const groups: TimeSlotGroup[] = [];
+  
+  // 선택된 시간대만 순회
+  const selectedTimeSlots = timeSlots.filter(ts => selectedTimeSlotIds.includes(ts.id));
+  
+  for (const timeSlot of selectedTimeSlots) {
+    const placesForTimeSlot = places.filter(place => 
+      place.place_time_slots?.some(pts => pts.time_slot_id === timeSlot.id)
+    );
+    
+    // 해당 시간대에 맞는 장소가 있으면 그룹에 추가
+    if (placesForTimeSlot.length > 0) {
+      groups.push({
+        timeSlot,
+        places: placesForTimeSlot.sort((a, b) => (b.recommendationScore || 0) - (a.recommendationScore || 0))
+      });
+    }
+  }
+  
+  return groups;
+}
+
+// 추천 결과를 시간대별로 표시하는 컴포넌트
+function RecommendationResults({ 
+  recommendations, 
+  timeSlots 
+}: { 
+  recommendations: RecommendationResponse;
+  timeSlots: TimeSlot[];
+}) {
+  const places = recommendations.places as PlaceWithTimeSlots[];
+  const selectedTimeSlotIds = recommendations.metadata.requestInfo.timeSlotIds;
+  
+  // 시간대별로 장소 그룹화
+  const timeSlotGroups = groupPlacesByTimeSlot(places, timeSlots, selectedTimeSlotIds);
+  
+  if (places.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-500 text-lg mb-4">😔</div>
+        <p className="text-gray-600">
+          선택하신 조건에 맞는 데이트 코스가 없습니다.<br />
+          다른 지역이나 시간대를 선택해보세요.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="text-center mb-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-2">
+          ✨ 추천 데이트 코스 ✨
+        </h3>
+        <p className="text-sm text-gray-600">
+          총 {places.length}개의 장소를 추천받았습니다
+        </p>
+        <div className="text-xs text-gray-500 mt-1">
+          실행 시간: {recommendations.metadata.executionTime}ms
+        </div>
+      </div>
+
+      {timeSlotGroups.map((group) => (
+        <div key={group.timeSlot.id} className="mb-8">
+          <div className="mb-4">
+            <h4 className="text-lg font-semibold text-purple-800 mb-1">
+              {group.timeSlot.name}
+            </h4>
+            <p className="text-sm text-gray-600">
+              {group.timeSlot.start_time} - {group.timeSlot.end_time} • {group.places.length}개 장소
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            {group.places.map((place, index) => (
+              <PlaceCard key={`${place.id}-${group.timeSlot.id}`} place={place} rank={index + 1} />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {timeSlotGroups.length === 0 && (
+        <div className="text-center py-8">
+          <div className="text-gray-500 text-lg mb-4">🤔</div>
+          <p className="text-gray-600">
+            선택하신 시간대에 맞는 장소를 찾을 수 없습니다.<br />
+            다른 시간대를 선택해보세요.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 개별 장소 카드 컴포넌트
+function PlaceCard({ place, rank }: { place: PlaceWithTimeSlots; rank: number }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      {place.place_images && place.place_images.length > 0 && (
+        <img
+          src={place.place_images[0].image_url}
+          alt={place.place_images[0].alt_text || place.name || '장소 이미지'}
+          className="w-full h-48 object-cover"
+        />
+      )}
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-bold text-purple-600">#{rank}</span>
+              <h4 className="text-lg font-semibold text-gray-900">{place.name}</h4>
+            </div>
+            {place.categories && (
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                {place.categories.name}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col items-end text-sm text-gray-500 ml-2">
+            <div className="flex items-center">
+              <span className="text-yellow-400">⭐</span>
+              <span className="ml-1">{place.rating || 'N/A'}</span>
+            </div>
+            {place.recommendationScore && (
+              <div className="text-xs text-purple-600 mt-1">
+                추천 점수: {Math.round(place.recommendationScore)}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {place.description && (
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+            {place.description}
+          </p>
+        )}
+        
+        <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
+          <div className="flex items-center gap-3">
+            {place.price_range && (
+              <div className="flex items-center">
+                <span>💰</span>
+                <span className="ml-1">
+                  {'₩'.repeat(Math.min(place.price_range, 4))}
+                </span>
+              </div>
+            )}
+            {place.groupSize && place.groupSize > 1 && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                {place.groupSize}개 등록
+              </span>
+            )}
+          </div>
+          <div className="flex gap-1">
+            {place.isPartnership && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                제휴
+              </span>
+            )}
+            {place.sources?.includes('admin') && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                공식
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {place.tags && place.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {place.tags.slice(0, 3).map((tag, index) => (
+              <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                #{tag}
+              </span>
+            ))}
+            {place.tags.length > 3 && (
+              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
+                +{place.tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 
 export const meta: MetaFunction = () => {
@@ -55,10 +272,12 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const recommendations = await getRecommendations(request, {
+    const recommendations = await getAdvancedRecommendations(request, {
       regionId,
       date,
-      timeSlotIds
+      timeSlotIds,
+      maxResults: 12,
+      diversityWeight: 0.3
     });
 
     return json({ 
@@ -231,73 +450,10 @@ export default function Index() {
 
         {/* 추천 결과 */}
         {actionData?.recommendations && (
-          <div>
-            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              ✨ 추천 데이트 코스 ✨
-            </h3>
-            {(actionData.recommendations as { places?: unknown[] })?.places?.length > 0 ? (
-              <div className="space-y-4">
-                {((actionData.recommendations as { places?: Record<string, unknown>[] })?.places || []).map((place: Record<string, unknown>) => (
-                  <div key={place.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                    {place.place_images && place.place_images.length > 0 && (
-                      <img
-                        src={place.place_images[0].image_url}
-                        alt={place.name}
-                        className="w-full h-48 object-cover"
-                      />
-                    )}
-                    <div className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-gray-900 mb-1">{place.name}</h4>
-                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                            {place.categories?.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500 ml-2">
-                          <span className="text-yellow-400">⭐</span>
-                          <span className="ml-1">{place.rating}</span>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                        {place.description}
-                      </p>
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                        <div className="flex items-center">
-                          <span>💰</span>
-                          <span className="ml-1">
-                            {'₩'.repeat(place.price_level)}
-                          </span>
-                        </div>
-                        {place.is_partnership && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            제휴
-                          </span>
-                        )}
-                      </div>
-                      {place.tags && place.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {place.tags.slice(0, 3).map((tag: string, index: number) => (
-                            <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">😔</div>
-                <p className="text-gray-600">
-                  선택하신 조건에 맞는 데이트 코스가 없습니다.<br />
-                  다른 지역이나 시간대를 선택해보세요.
-                </p>
-              </div>
-            )}
-          </div>
+          <RecommendationResults 
+            recommendations={actionData.recommendations as RecommendationResponse}
+            timeSlots={timeSlots}
+          />
         )}
       </main>
     </div>
