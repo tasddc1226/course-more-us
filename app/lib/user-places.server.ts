@@ -62,8 +62,11 @@ export async function createUserPlaceFromLocation(
     longitude: number;
     category_id: number;
     description: string;
+    rating: number;
     tags: string[];
     images: string[];
+    selectedTimeSlot?: number;
+    selectedPeriod?: 'weekday' | 'weekend';
   }
 ) {
   const supabase = createSupabaseServerClient(request);
@@ -97,7 +100,7 @@ export async function createUserPlaceFromLocation(
       user_id: user.id,
       source: 'user',
       is_active: true,
-      rating: 0,
+      rating: placeData.rating,
       price_range: 2
     })
     .select()
@@ -124,6 +127,46 @@ export async function createUserPlaceFromLocation(
     if (imageError) {
       console.error('Error creating place images:', imageError);
       // 이미지 오류는 장소 등록을 실패시키지 않음
+    }
+  }
+
+  // 시간대 정보 처리
+  if (placeData.selectedTimeSlot && placeData.selectedPeriod) {
+    // time_slots 테이블에서 해당 시간대의 start_time, end_time 조회
+    const { data: timeSlot, error: timeSlotError } = await supabase
+      .from('time_slots')
+      .select('start_time, end_time')
+      .eq('id', placeData.selectedTimeSlot)
+      .single();
+
+    if (!timeSlotError && timeSlot) {
+      // start_time~end_time 형식으로 운영시간 생성
+      const timeRange = `${timeSlot.start_time}~${timeSlot.end_time}`;
+      
+      const operatingHours: Record<string, string> = {};
+      if (placeData.selectedPeriod === 'weekday') {
+        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].forEach(day => {
+          operatingHours[day] = timeRange;
+        });
+      } else {
+        ['saturday', 'sunday'].forEach(day => {
+          operatingHours[day] = timeRange;
+        });
+      }
+
+      // 장소의 운영시간 업데이트
+      await supabase
+        .from('places')
+        .update({ operating_hours: operatingHours })
+        .eq('id', place.id);
+
+      // place_time_slots 테이블에 시간대 정보 추가
+      await supabase
+        .from('place_time_slots')
+        .insert({
+          place_id: place.id,
+          time_slot_id: placeData.selectedTimeSlot
+        });
     }
   }
 
@@ -227,6 +270,15 @@ export async function getUserPlaces(request: Request) {
         image_url,
         is_primary,
         display_order
+      ),
+      place_time_slots (
+        time_slot_id,
+        time_slots (
+          id,
+          name,
+          start_time,
+          end_time
+        )
       )
     `)
     .eq('user_id', user.id)
@@ -239,6 +291,111 @@ export async function getUserPlaces(request: Request) {
   }
 
   return places || [];
+}
+
+/**
+ * 유저 장소 수정 (평점과 운영시간만)
+ */
+export async function updateUserPlace(
+  request: Request, 
+  placeId: number,
+  updateData: {
+    rating?: number;
+    operating_hours?: Record<string, number[]>;
+    selectedTimeSlot?: number;
+    selectedPeriod?: 'weekday' | 'weekend';
+  }
+) {
+  const supabase = createSupabaseServerClient(request);
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error("인증이 필요합니다");
+  }
+
+  // 해당 장소가 현재 사용자의 것인지 확인
+  const { data: existingPlace, error: fetchError } = await supabase
+    .from('places')
+    .select('user_id')
+    .eq('id', placeId)
+    .eq('source', 'user')
+    .single();
+
+  if (fetchError || !existingPlace) {
+    throw new Error("장소를 찾을 수 없습니다");
+  }
+
+  if (existingPlace.user_id !== user.id) {
+    throw new Error("수정 권한이 없습니다");
+  }
+
+  // 시간대 정보가 있으면 운영시간을 start_time~end_time 형식으로 변환
+  let finalOperatingHours: Record<string, string> | Record<string, number[]> | undefined = updateData.operating_hours;
+  
+  if (updateData.selectedTimeSlot && updateData.selectedPeriod) {
+    // time_slots 테이블에서 해당 시간대의 start_time, end_time 조회
+    const { data: timeSlot, error: timeSlotError } = await supabase
+      .from('time_slots')
+      .select('start_time, end_time')
+      .eq('id', updateData.selectedTimeSlot)
+      .single();
+
+    if (timeSlotError) {
+      console.error('Error fetching time slot:', timeSlotError);
+      throw new Error("시간대 정보 조회 중 오류가 발생했습니다");
+    }
+
+    // start_time~end_time 형식으로 운영시간 생성
+    const timeRange = `${timeSlot.start_time}~${timeSlot.end_time}`;
+    
+    finalOperatingHours = {};
+    if (updateData.selectedPeriod === 'weekday') {
+      ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].forEach(day => {
+        (finalOperatingHours as Record<string, string>)[day] = timeRange;
+      });
+    } else {
+      ['saturday', 'sunday'].forEach(day => {
+        (finalOperatingHours as Record<string, string>)[day] = timeRange;
+      });
+    }
+
+    // place_time_slots 테이블 업데이트 (기존 데이터 삭제 후 새로 추가)
+    await supabase
+      .from('place_time_slots')
+      .delete()
+      .eq('place_id', placeId);
+
+    const { error: timeSlotInsertError } = await supabase
+      .from('place_time_slots')
+      .insert({
+        place_id: placeId,
+        time_slot_id: updateData.selectedTimeSlot
+      });
+
+    if (timeSlotInsertError) {
+      console.error('Error updating place_time_slots:', timeSlotInsertError);
+      // place_time_slots 오류는 전체 작업을 실패시키지 않음
+    }
+  }
+
+  // 장소 정보 업데이트
+  const { data: updatedPlace, error: updateError } = await supabase
+    .from('places')
+    .update({
+      rating: updateData.rating,
+      operating_hours: finalOperatingHours,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', placeId)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error('Error updating user place:', updateError);
+    throw new Error("장소 수정 중 오류가 발생했습니다");
+  }
+
+  return updatedPlace;
 }
 
 /**
