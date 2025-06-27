@@ -77,6 +77,13 @@ export default function MyInfo() {
     checked?: boolean
   }>({})
 
+  // profile이 변경될 때 nickname 상태 업데이트
+  useEffect(() => {
+    if (profile?.nickname) {
+      setNickname(profile.nickname)
+    }
+  }, [profile?.nickname])
+
   // 닉네임 중복 확인
   const checkNickname = () => {
     if (!nickname.trim()) {
@@ -106,6 +113,13 @@ export default function MyInfo() {
     }
   }, [nicknameFetcher.data])
 
+  // 프로필 업데이트 성공 후 상태 초기화
+  useEffect(() => {
+    if (actionData && 'success' in actionData && actionData.success) {
+      setNicknameStatus({})
+    }
+  }, [actionData])
+
   const handleNicknameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!nicknameStatus.available) {
@@ -122,6 +136,11 @@ export default function MyInfo() {
   const handleEditCancel = () => {
     setNickname(profile?.nickname || '')
     setIsEditing(false)
+    setNicknameStatus({})
+  }
+
+  const handleEditStart = () => {
+    setIsEditing(true)
     setNicknameStatus({})
   }
 
@@ -199,7 +218,7 @@ export default function MyInfo() {
                 </div>
                 {!isEditing && (
                   <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={handleEditStart}
                     className="text-purple-600 hover:text-purple-800 text-sm font-medium"
                   >
                     변경
