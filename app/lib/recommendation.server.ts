@@ -1,4 +1,8 @@
 import { createSupabaseServerClient } from './supabase.server'
+import { AdvancedRecommendationRequest, RecommendationResponse, RecommendedPlace } from './recommendation/types'
+import { groupPlacesByLocation } from './recommendation/grouping'
+import { calculateGroupScores } from './recommendation/scoring'
+import { ensureCategoryDiversity } from './recommendation/diversity'
 
 // 모든 지역 조회 (사용자용)
 export async function getRegions(request: Request) {
@@ -123,4 +127,92 @@ export async function getRecommendations(
       timeSlotIds
     }
   }
+}
+
+// 고급 추천 알고리즘 구현 (DAY8)
+export async function getAdvancedRecommendations(
+  request: Request,
+  params: AdvancedRecommendationRequest,
+): Promise<RecommendationResponse> {
+  const startTime = Date.now()
+
+  // STEP 1: 기본 필터링된 장소 조회
+  const rawPlaces = await fetchFilteredPlaces(request, params)
+
+  // STEP 2: 위치 기반 그룹화
+  const locationGroups = groupPlacesByLocation(rawPlaces)
+
+  // STEP 3: 그룹별 점수 계산
+  const scoredGroups = calculateGroupScores(locationGroups, params.timeSlotIds)
+
+  // STEP 4: 카테고리 다양성 확보
+  const diversePlaces = ensureCategoryDiversity(
+    scoredGroups,
+    params.diversityWeight ?? 0.3,
+  )
+
+  // STEP 5: 최종 정렬 및 제한
+  const finalRecommendations = finalizeRecommendations(
+    diversePlaces,
+    params.maxResults ?? 12,
+  )
+
+  const endTime = Date.now()
+
+  return {
+    places: finalRecommendations,
+    metadata: {
+      totalCandidates: rawPlaces.length,
+      filteringSteps: {
+        initial: rawPlaces.length,
+        afterLocationGrouping: locationGroups.length,
+        afterDiversityFilter: diversePlaces.length,
+        final: finalRecommendations.length,
+      },
+      executionTime: endTime - startTime,
+      requestInfo: {
+        regionId: params.regionId,
+        date: params.date,
+        timeSlotIds: params.timeSlotIds,
+      },
+    },
+  }
+}
+
+// 내부 헬퍼들 -----------------------------------------------------------
+
+async function fetchFilteredPlaces(
+  request: Request,
+  { regionId, timeSlotIds }: AdvancedRecommendationRequest,
+) {
+  const supabase = createSupabaseServerClient(request)
+
+  const { data, error } = await supabase
+    .from('places')
+    .select(
+      `*,
+      place_time_slots!inner(time_slot_id, priority)`,
+    )
+    .eq('region_id', regionId)
+    .eq('is_active', true)
+    .in('place_time_slots.time_slot_id', timeSlotIds)
+
+  if (error) throw error
+  return data || []
+}
+
+function finalizeRecommendations(
+  places: ReturnType<typeof ensureCategoryDiversity>,
+  max: number,
+): RecommendedPlace[] {
+  return places
+    .sort((a, b) => b.score - a.score)
+    .slice(0, max)
+    .map((p) => ({
+      ...p.place,
+      recommendationScore: p.score,
+      groupSize: p.groupSize,
+      isPartnership: p.scoreBreakdown.partnership > 0,
+      sources: p.sources,
+    }))
 } 
