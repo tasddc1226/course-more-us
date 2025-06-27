@@ -191,7 +191,9 @@ async function fetchFilteredPlaces(
     .from('places')
     .select(
       `*,
-      place_time_slots!inner(time_slot_id, priority)`,
+      place_time_slots!inner(time_slot_id, priority),
+      place_images(image_url, alt_text),
+      categories(name, icon)`,
     )
     .eq('region_id', regionId)
     .eq('is_active', true)
