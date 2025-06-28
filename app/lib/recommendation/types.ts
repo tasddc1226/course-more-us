@@ -6,8 +6,23 @@ export interface AdvancedRecommendationRequest {
   diversityWeight?: number // 기본값: 0.3
 }
 
+export interface Place {
+  id: number
+  name: string
+  latitude: number
+  longitude: number
+  rating?: number
+  created_at?: string | null
+  source: string
+  is_partnership?: boolean
+  place_time_slots?: Array<{
+    time_slot_id: number
+    priority?: number
+  }>
+}
+
 export interface PlaceScore {
-  place: any
+  place: Place
   score: number
   scoreBreakdown: {
     partnership: number
@@ -22,12 +37,12 @@ export interface PlaceScore {
 
 export interface LocationGroup {
   locationKey: string
-  places: any[]
-  representative: any
+  places: Place[]
+  representative: Place
   score: number
 }
 
-export interface RecommendedPlace extends Record<string, any> {
+export interface RecommendedPlace extends Place {
   recommendationScore: number
   groupSize: number
   isPartnership: boolean
