@@ -451,90 +451,85 @@ function PlaceCard({
           </div>
         )}
         
-        {/* 사용자 피드백 버튼 */}
+        {/* 사용자 피드백 섹션 */}
         <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="text-xs text-gray-600 mb-2">
-            {hasFeedback ? '피드백을 남겨주셨습니다!' : '이 장소는 어떠셨나요?'}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                if (!hasFeedback) {
-                  fetcher.submit(
-                    {
-                      intent: 'feedback',
-                      placeId: place.id.toString(),
-                      feedbackType: 'like'
-                    },
-                    { method: 'post' }
-                  );
-                }
-              }}
-              disabled={hasFeedback || isSubmitting}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
-                hasFeedback || isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
-              } ${
-                hasLike 
-                  ? 'bg-green-100 border-green-300 text-green-700' 
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200'
-              }`}
-            >
-              <span>{hasLike ? '💚' : '👍'}</span>
-              <span>좋아요</span>
-            </button>
-            
-            <button
-              onClick={() => {
-                if (!hasFeedback) {
-                  fetcher.submit(
-                    {
-                      intent: 'feedback',
-                      placeId: place.id.toString(),
-                      feedbackType: 'dislike'
-                    },
-                    { method: 'post' }
-                  );
-                }
-              }}
-              disabled={hasFeedback || isSubmitting}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
-                hasFeedback || isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
-              } ${
-                hasDislike 
-                  ? 'bg-red-100 border-red-300 text-red-700' 
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200'
-              }`}
-            >
-              <span>{hasDislike ? '💔' : '👎'}</span>
-              <span>별로예요</span>
-            </button>
-            
-            <button
-              onClick={() => {
-                if (!hasFeedback) {
-                  fetcher.submit(
-                    {
-                      intent: 'feedback',
-                      placeId: place.id.toString(),
-                      feedbackType: 'visited'
-                    },
-                    { method: 'post' }
-                  );
-                }
-              }}
-              disabled={hasFeedback || isSubmitting}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
-                hasFeedback || isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
-              } ${
-                hasVisited 
-                  ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200'
-              }`}
-            >
-              <span>{hasVisited ? '✅' : '📍'}</span>
-              <span>가봤어요</span>
-            </button>
-          </div>
+          {hasFeedback ? (
+            <div className="text-center py-2">
+              <div className="text-sm text-green-600 font-medium mb-1">
+                피드백을 남겨주셔서 감사합니다! 💝
+              </div>
+              <div className="text-xs text-gray-500">
+                {hasLike && '좋아요를 눌러주셨네요 😊'}
+                {hasDislike && '소중한 의견 감사합니다 🙏'}
+                {hasVisited && '방문 경험을 공유해주셔서 감사해요 ✨'}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-gray-600 mb-2">이 장소는 어떠셨나요?</div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    fetcher.submit(
+                      {
+                        intent: 'feedback',
+                        placeId: place.id.toString(),
+                        feedbackType: 'like'
+                      },
+                      { method: 'post' }
+                    );
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                    isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+                  } bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200`}
+                >
+                  <span>👍</span>
+                  <span>좋아요</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    fetcher.submit(
+                      {
+                        intent: 'feedback',
+                        placeId: place.id.toString(),
+                        feedbackType: 'dislike'
+                      },
+                      { method: 'post' }
+                    );
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                    isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+                  } bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200`}
+                >
+                  <span>👎</span>
+                  <span>별로예요</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    fetcher.submit(
+                      {
+                        intent: 'feedback',
+                        placeId: place.id.toString(),
+                        feedbackType: 'visited'
+                      },
+                      { method: 'post' }
+                    );
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                    isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+                  } bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200`}
+                >
+                  <span>📍</span>
+                  <span>가봤어요</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
