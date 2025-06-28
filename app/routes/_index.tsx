@@ -1,6 +1,6 @@
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useActionData, Link, Form, useNavigation } from "@remix-run/react";
+import { useLoaderData, useActionData, Link, Form, useNavigation, useFetcher } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
@@ -276,10 +276,31 @@ function PlaceCard({
   rank: number;
   userFeedbacks?: UserFeedback[];
 }) {
+  const fetcher = useFetcher();
   const feedbacks = userFeedbacks?.filter(f => f.place_id === place.id) || [];
-  const hasLike = feedbacks.some(f => f.feedback_type === 'like');
-  const hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
-  const hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
+  
+  // 로컬 피드백 상태 (fetcher 결과를 우선 반영)
+  let hasLike = feedbacks.some(f => f.feedback_type === 'like');
+  let hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
+  let hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
+  
+  // fetcher 결과가 있으면 실시간 상태 업데이트
+  if (fetcher.data && typeof fetcher.data === 'object' && 'feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
+    const result = fetcher.data.feedbackResult as {
+      placeId: number;
+      feedbackType: FeedbackType;
+      isActive: boolean;
+    };
+    if (result.placeId === place.id) {
+      if (result.feedbackType === 'like') {
+        hasLike = result.isActive;
+      } else if (result.feedbackType === 'dislike') {
+        hasDislike = result.isActive;
+      } else if (result.feedbackType === 'visited') {
+        hasVisited = result.isActive;
+      }
+    }
+  }
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {place.place_images && place.place_images.length > 0 && (
@@ -430,56 +451,71 @@ function PlaceCard({
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="text-xs text-gray-600 mb-2">이 장소는 어떠셨나요?</div>
           <div className="flex gap-2">
-            <Form method="post" className="inline">
-              <input type="hidden" name="intent" value="feedback" />
-              <input type="hidden" name="placeId" value={place.id} />
-              <input type="hidden" name="feedbackType" value="like" />
-              <button
-                type="submit"
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
-                  hasLike 
-                    ? 'bg-green-100 border-green-300 text-green-700' 
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200'
-                }`}
-              >
-                <span>{hasLike ? '💚' : '👍'}</span>
-                <span>좋아요</span>
-              </button>
-            </Form>
+            <button
+              onClick={() => {
+                fetcher.submit(
+                  {
+                    intent: 'feedback',
+                    placeId: place.id.toString(),
+                    feedbackType: 'like'
+                  },
+                  { method: 'post' }
+                );
+              }}
+              disabled={fetcher.state === 'submitting'}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors disabled:opacity-50 ${
+                hasLike 
+                  ? 'bg-green-100 border-green-300 text-green-700' 
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200'
+              }`}
+            >
+              <span>{hasLike ? '💚' : '👍'}</span>
+              <span>좋아요</span>
+            </button>
             
-            <Form method="post" className="inline">
-              <input type="hidden" name="intent" value="feedback" />
-              <input type="hidden" name="placeId" value={place.id} />
-              <input type="hidden" name="feedbackType" value="dislike" />
-              <button
-                type="submit"
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
-                  hasDislike 
-                    ? 'bg-red-100 border-red-300 text-red-700' 
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200'
-                }`}
-              >
-                <span>{hasDislike ? '💔' : '👎'}</span>
-                <span>별로예요</span>
-              </button>
-            </Form>
+            <button
+              onClick={() => {
+                fetcher.submit(
+                  {
+                    intent: 'feedback',
+                    placeId: place.id.toString(),
+                    feedbackType: 'dislike'
+                  },
+                  { method: 'post' }
+                );
+              }}
+              disabled={fetcher.state === 'submitting'}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors disabled:opacity-50 ${
+                hasDislike 
+                  ? 'bg-red-100 border-red-300 text-red-700' 
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200'
+              }`}
+            >
+              <span>{hasDislike ? '💔' : '👎'}</span>
+              <span>별로예요</span>
+            </button>
             
-            <Form method="post" className="inline">
-              <input type="hidden" name="intent" value="feedback" />
-              <input type="hidden" name="placeId" value={place.id} />
-              <input type="hidden" name="feedbackType" value="visited" />
-              <button
-                type="submit"
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
-                  hasVisited 
-                    ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200'
-                }`}
-              >
-                <span>{hasVisited ? '✅' : '📍'}</span>
-                <span>가봤어요</span>
-              </button>
-            </Form>
+            <button
+              onClick={() => {
+                fetcher.submit(
+                  {
+                    intent: 'feedback',
+                    placeId: place.id.toString(),
+                    feedbackType: 'visited'
+                  },
+                  { method: 'post' }
+                );
+              }}
+              disabled={fetcher.state === 'submitting'}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors disabled:opacity-50 ${
+                hasVisited 
+                  ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200'
+              }`}
+            >
+              <span>{hasVisited ? '✅' : '📍'}</span>
+              <span>가봤어요</span>
+            </button>
           </div>
         </div>
       </div>
