@@ -1,11 +1,54 @@
 import { createSupabaseServerClient } from './supabase.server'
-import { AdvancedRecommendationRequest, RecommendationResponse, RecommendedPlace } from './recommendation/types'
+import { AdvancedRecommendationRequest, RecommendationResponse, RecommendedPlace, Place } from './recommendation/types'
 import { groupPlacesByLocation } from './recommendation/grouping'
 import { calculateGroupScores } from './recommendation/scoring'
 import { ensureCategoryDiversity } from './recommendation/diversity'
+import { getCachedData, setCachedData, invalidateRegionsCache } from './cache.server'
+import { Database } from '~/types/database.types'
 
-// 모든 지역 조회 (사용자용)
+// Supabase에서 반환되는 place 타입 (join된 데이터 포함)
+type SupabasePlaceWithRelations = Database['public']['Tables']['places']['Row'] & {
+  place_time_slots: Array<{
+    time_slot_id: number | null
+    priority: number | null
+  }>
+  place_images: Array<{
+    image_url: string
+    alt_text: string | null
+  }> | null
+  categories: {
+    name: string
+    icon: string | null
+  } | null
+}
+
+// Supabase 타입을 recommendation Place 타입으로 변환
+function convertToRecommendationPlace(supabasePlace: SupabasePlaceWithRelations & { latitude: number; longitude: number }): Place {
+  return {
+    id: supabasePlace.id,
+    name: supabasePlace.name,
+    latitude: supabasePlace.latitude,
+    longitude: supabasePlace.longitude,
+    rating: supabasePlace.rating ?? undefined,
+    created_at: supabasePlace.created_at,
+    source: supabasePlace.source,
+    is_partnership: supabasePlace.is_partnership ?? undefined,
+    place_time_slots: supabasePlace.place_time_slots.map(pts => ({
+      time_slot_id: pts.time_slot_id ?? 0,
+      priority: pts.priority ?? undefined
+    }))
+  }
+}
+
+// 모든 지역 조회 (사용자용) - 캐싱 적용
 export async function getRegions(request: Request) {
+  const cacheKey = 'regions'
+  const cached = getCachedData(cacheKey)
+  
+  if (cached) {
+    return cached
+  }
+
   const supabase = createSupabaseServerClient(request)
   
   const { data, error } = await supabase
@@ -14,11 +57,20 @@ export async function getRegions(request: Request) {
     .order('name')
 
   if (error) throw error
+  
+  setCachedData(cacheKey, data)
   return data
 }
 
-// 모든 시간대 조회 (사용자용)
+// 모든 시간대 조회 (사용자용) - 캐싱 적용  
 export async function getTimeSlots(request: Request) {
+  const cacheKey = 'time_slots'
+  const cached = getCachedData(cacheKey)
+  
+  if (cached) {
+    return cached
+  }
+
   const supabase = createSupabaseServerClient(request)
   
   const { data, error } = await supabase
@@ -27,8 +79,12 @@ export async function getTimeSlots(request: Request) {
     .order('start_time')
 
   if (error) throw error
+  
+  setCachedData(cacheKey, data)
   return data
 }
+
+
 
 // 모든 카테고리 조회 (사용자용)
 export async function getCategories(request: Request) {
@@ -81,6 +137,10 @@ export async function findOrCreateRegion(request: Request, regionName: string) {
     .single()
 
   if (createError) throw createError
+  
+  // 새 지역이 추가되었으므로 캐시 무효화
+  invalidateRegionsCache()
+  
   return newRegion
 }
 
@@ -140,7 +200,9 @@ export async function getAdvancedRecommendations(
   const rawPlaces = await fetchFilteredPlaces(request, params)
 
   // STEP 2: 위치 기반 그룹화
-  const locationGroups = groupPlacesByLocation(rawPlaces)
+  // Supabase 타입을 recommendation Place 타입으로 변환
+  const convertedPlaces = rawPlaces.map(convertToRecommendationPlace)
+  const locationGroups = groupPlacesByLocation(convertedPlaces)
 
   // STEP 3: 그룹별 점수 계산
   const scoredGroups = calculateGroupScores(locationGroups, params.timeSlotIds)
@@ -181,6 +243,11 @@ export async function getAdvancedRecommendations(
 
 // 내부 헬퍼들 -----------------------------------------------------------
 
+// 타입 가드: 위치 정보가 있는 장소인지 확인
+function hasValidLocation(place: SupabasePlaceWithRelations): place is SupabasePlaceWithRelations & { latitude: number; longitude: number } {
+  return place.latitude !== null && place.longitude !== null
+}
+
 async function fetchFilteredPlaces(
   request: Request,
   { regionId, timeSlotIds }: AdvancedRecommendationRequest,
@@ -200,7 +267,10 @@ async function fetchFilteredPlaces(
     .in('place_time_slots.time_slot_id', timeSlotIds)
 
   if (error) throw error
-  return data || []
+  
+  // 위치 정보가 있는 장소들만 필터링 (grouping 함수의 타입 요구사항에 맞춤)
+  const rawData = data as SupabasePlaceWithRelations[]
+  return rawData.filter(hasValidLocation)
 }
 
 function finalizeRecommendations(

@@ -3,7 +3,6 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, Link, Form, useNavigation, useFetcher } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getAdvancedRecommendations } from "~/lib/recommendation.server";
-import { isAdmin } from "~/lib/admin.server";
 
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 
@@ -28,6 +27,8 @@ type PlaceWithTimeSlots = RecommendedPlace & {
     icon?: string;
   };
   tags?: string[];
+  description?: string;
+  price_range?: number;
 };
 
 type TimeSlotGroup = {
@@ -549,18 +550,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const error = url.searchParams.get('error');
   
   if (user) {
-    // 로그인한 사용자에게는 추천 폼 데이터 제공
-    // rate limit 방지를 위해 getUserProfile 대신 user.user_metadata 사용
-    const [regions, timeSlots, userIsAdmin] = await Promise.all([
+    // 캐싱된 API 호출로 rate limit 최적화
+    const [regions, timeSlots] = await Promise.all([
       getRegions(request),
-      getTimeSlots(request),
-      isAdmin(request)
+      getTimeSlots(request)
     ]);
     
-    return json({ user, profile: null, regions, timeSlots, isAdmin: userIsAdmin, error });
+    return json({ 
+      user, 
+      profile: null, 
+      regions: regions as Tables<'regions'>[], 
+      timeSlots: timeSlots as Tables<'time_slots'>[], 
+      isAdmin: false, 
+      error 
+    });
   }
   
-  return json({ user, profile: null, regions: [], timeSlots: [], isAdmin: false, error });
+  return json({ 
+    user, 
+    profile: null, 
+    regions: [] as Tables<'regions'>[], 
+    timeSlots: [] as Tables<'time_slots'>[], 
+    isAdmin: false, 
+    error 
+  });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -648,7 +661,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-  const { user, profile, regions, timeSlots, error, isAdmin: userIsAdmin } = useLoaderData<typeof loader>();
+  const { user, regions, timeSlots, error, isAdmin: userIsAdmin } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   
