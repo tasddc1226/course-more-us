@@ -4,10 +4,10 @@ export function ensureCategoryDiversity(
   scoredGroups: PlaceScore[],
   diversityWeight: number = 0.3,
 ): PlaceScore[] {
-  // 카테고리별로 분류
+  // 카테고리별로 분류 (null/undefined 카테고리는 -1로 처리)
   const categoryGroups = new Map<number, PlaceScore[]>()
   scoredGroups.forEach((ps) => {
-    const categoryId = ps.place.category_id
+    const categoryId = ps.place.category_id ?? -1 // null/undefined인 경우 -1로 처리
     if (!categoryGroups.has(categoryId)) categoryGroups.set(categoryId, [])
     categoryGroups.get(categoryId)!.push(ps)
   })

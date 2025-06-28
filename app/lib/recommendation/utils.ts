@@ -16,9 +16,12 @@ export function convertToRecommendationPlace(supabasePlace: SupabasePlaceWithRel
     created_at: supabasePlace.created_at,
     source: supabasePlace.source,
     is_partnership: supabasePlace.is_partnership ?? undefined,
-    place_time_slots: supabasePlace.place_time_slots.map(pts => ({
-      time_slot_id: pts.time_slot_id ?? 0,
-      priority: pts.priority ?? undefined
-    }))
+    category_id: supabasePlace.category_id, // 카테고리 다양성 알고리즘을 위해 필수
+    place_time_slots: supabasePlace.place_time_slots
+      .filter(pts => pts.time_slot_id !== null) // null인 time_slot_id 제외
+      .map(pts => ({
+        time_slot_id: pts.time_slot_id as number, // 이미 null을 필터링했으므로 안전한 타입 캐스팅
+        priority: pts.priority ?? undefined
+      }))
   }
 }

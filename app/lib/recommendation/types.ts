@@ -33,6 +33,7 @@ export interface Place {
   created_at?: string | null
   source: string
   is_partnership?: boolean
+  category_id?: number | null
   place_time_slots?: Array<{
     time_slot_id: number
     priority?: number
