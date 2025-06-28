@@ -21,7 +21,7 @@ export const ROUTES = {
   
   // 추천 시스템 (향후 추가)
   RECOMMENDATIONS: '/recommendations',
-  FAVORITES: '/favorites',
+  MY_FAVORITES: '/my-favorites',
   PROFILE: '/profile',
   MY_PROFILE: '/my-profile',
   MY_INFO: '/my-info',

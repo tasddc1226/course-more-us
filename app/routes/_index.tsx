@@ -6,6 +6,7 @@ import { getRegions, getTimeSlots } from "~/lib/data.server";
 import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
+import { getUserFavoritesForPlaces, toggleFavorite } from "~/lib/favorites.server";
 
 import { Button, Calendar, triggerCelebration } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
@@ -140,12 +141,14 @@ function RecommendationResults({
   recommendations, 
   timeSlots,
   isAdmin = false,
-  userFeedbacks = {}
+  userFeedbacks = {},
+  userFavorites = {}
 }: { 
   recommendations: RecommendationResponse;
   timeSlots: TimeSlot[];
   isAdmin?: boolean;
   userFeedbacks?: Record<number, UserFeedback[]>;
+  userFavorites?: Record<number, boolean>;
 }) {
   const places = recommendations.places as PlaceWithTimeSlots[];
   const selectedTimeSlotIds = recommendations.metadata.requestInfo.timeSlotIds;
@@ -204,6 +207,7 @@ function RecommendationResults({
                 place={place} 
                 rank={index + 1}
                 userFeedbacks={userFeedbacks[place.id] || []}
+                isFavorite={userFavorites[place.id] || false}
               />
             ))}
           </div>
@@ -272,11 +276,13 @@ function LoadingSkeleton() {
 function PlaceCard({ 
   place, 
   rank, 
-  userFeedbacks 
+  userFeedbacks,
+  isFavorite = false
 }: { 
   place: PlaceWithTimeSlots; 
   rank: number;
   userFeedbacks?: UserFeedback[];
+  isFavorite?: boolean;
 }) {
   const fetcher = useFetcher();
   const feedbacks = userFeedbacks?.filter(f => f.place_id === place.id) || [];
@@ -286,20 +292,37 @@ function PlaceCard({
   let hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
   let hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
   
+  // 즐겨찾기 상태 (로컬 상태)
+  let currentIsFavorite = isFavorite;
+  
   // fetcher 결과가 있으면 실시간 상태 업데이트
-  if (fetcher.data && typeof fetcher.data === 'object' && 'feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
-    const result = fetcher.data.feedbackResult as {
-      placeId: number;
-      feedbackType: FeedbackType;
-      isActive: boolean;
-    };
-    if (result.placeId === place.id) {
-      if (result.feedbackType === 'like') {
-        hasLike = result.isActive;
-      } else if (result.feedbackType === 'dislike') {
-        hasDislike = result.isActive;
-      } else if (result.feedbackType === 'visited') {
-        hasVisited = result.isActive;
+  if (fetcher.data && typeof fetcher.data === 'object') {
+    // 피드백 결과 처리
+    if ('feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
+      const result = fetcher.data.feedbackResult as {
+        placeId: number;
+        feedbackType: FeedbackType;
+        isActive: boolean;
+      };
+      if (result.placeId === place.id) {
+        if (result.feedbackType === 'like') {
+          hasLike = result.isActive;
+        } else if (result.feedbackType === 'dislike') {
+          hasDislike = result.isActive;
+        } else if (result.feedbackType === 'visited') {
+          hasVisited = result.isActive;
+        }
+      }
+    }
+    
+    // 즐겨찾기 결과 처리
+    if ('favoriteResult' in fetcher.data && fetcher.data.favoriteResult) {
+      const result = fetcher.data.favoriteResult as {
+        placeId: number;
+        isFavorite: boolean;
+      };
+      if (result.placeId === place.id) {
+        currentIsFavorite = result.isFavorite;
       }
     }
   }
@@ -329,16 +352,54 @@ function PlaceCard({
               </span>
             )}
           </div>
-          <div className="flex flex-col items-end text-sm text-gray-500 ml-2">
-            <div className="flex items-center">
-              <span className="text-yellow-400">⭐</span>
-              <span className="ml-1">{place.rating || 'N/A'}</span>
-            </div>
-            {place.recommendationScore && (
-              <div className="text-xs text-purple-600 mt-1">
-                추천 점수: {Math.round(place.recommendationScore)}
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end text-sm text-gray-500">
+              <div className="flex items-center">
+                <span className="text-yellow-400">⭐</span>
+                <span className="ml-1">{place.rating || 'N/A'}</span>
               </div>
-            )}
+              {place.recommendationScore && (
+                <div className="text-xs text-purple-600 mt-1">
+                  추천 점수: {Math.round(place.recommendationScore)}
+                </div>
+              )}
+            </div>
+            
+            {/* 즐겨찾기 버튼 */}
+            <button
+              onClick={() => {
+                fetcher.submit(
+                  {
+                    intent: 'favorite',
+                    placeId: place.id.toString()
+                  },
+                  { method: 'post' }
+                );
+              }}
+              disabled={isSubmitting}
+              className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+                isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+              } ${
+                currentIsFavorite 
+                  ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
+                  : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+              }`}
+              title={currentIsFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+            >
+              <svg 
+                className="w-5 h-5" 
+                fill={currentIsFavorite ? 'currentColor' : 'none'} 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                />
+              </svg>
+            </button>
           </div>
         </div>
         
@@ -604,6 +665,38 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
+  // 즐겨찾기 처리
+  if (intent === 'favorite') {
+    const placeId = parseInt(formData.get('placeId') as string);
+
+    if (!placeId) {
+      return json({ 
+        error: '장소 정보가 올바르지 않습니다.',
+        recommendations: null,
+        favoriteResult: null
+      }, { status: 400 });
+    }
+
+    try {
+      const result = await toggleFavorite(request, placeId);
+      return json({ 
+        error: null,
+        recommendations: null,
+        favoriteResult: {
+          placeId,
+          isFavorite: result.isFavorite
+        }
+      });
+    } catch (error) {
+      console.error('Favorite error:', error);
+      return json({ 
+        error: '즐겨찾기 처리 중 오류가 발생했습니다.',
+        recommendations: null,
+        favoriteResult: null
+      }, { status: 500 });
+    }
+  }
+
   // 피드백 처리
   if (intent === 'feedback') {
     const placeId = parseInt(formData.get('placeId') as string);
@@ -660,14 +753,18 @@ export async function action({ request }: ActionFunctionArgs) {
       diversityWeight: 0.3
     });
 
-    // 추천 결과와 함께 사용자 피드백 정보도 가져오기
+    // 추천 결과와 함께 사용자 피드백, 즐겨찾기 정보도 가져오기
     const placeIds = recommendations.places.map(place => place.id);
-    const userFeedbacks = await getUserFeedbacksForPlaces(request, placeIds);
+    const [userFeedbacks, userFavorites] = await Promise.all([
+      getUserFeedbacksForPlaces(request, placeIds),
+      getUserFavoritesForPlaces(request, placeIds)
+    ]);
 
     return json({ 
       error: null,
       recommendations,
-      userFeedbacks
+      userFeedbacks,
+      userFavorites
     });
   } catch (error) {
     console.error('Recommendation error:', error);
@@ -856,6 +953,7 @@ export default function Index() {
             timeSlots={timeSlots}
             isAdmin={userIsAdmin}
             userFeedbacks={actionData.userFeedbacks || {}}
+            userFavorites={actionData.userFavorites || {}}
           />
         ) : null}
       </main>
