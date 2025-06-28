@@ -301,6 +301,10 @@ function PlaceCard({
       }
     }
   }
+  
+  // 피드백이 이미 제출되었는지 확인 (한 번이라도 피드백을 남겼으면 비활성화)
+  const hasFeedback = hasLike || hasDislike || hasVisited;
+  const isSubmitting = fetcher.state === 'submitting';
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {place.place_images && place.place_images.length > 0 && (
@@ -449,21 +453,27 @@ function PlaceCard({
         
         {/* 사용자 피드백 버튼 */}
         <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="text-xs text-gray-600 mb-2">이 장소는 어떠셨나요?</div>
+          <div className="text-xs text-gray-600 mb-2">
+            {hasFeedback ? '피드백을 남겨주셨습니다!' : '이 장소는 어떠셨나요?'}
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => {
-                fetcher.submit(
-                  {
-                    intent: 'feedback',
-                    placeId: place.id.toString(),
-                    feedbackType: 'like'
-                  },
-                  { method: 'post' }
-                );
+                if (!hasFeedback) {
+                  fetcher.submit(
+                    {
+                      intent: 'feedback',
+                      placeId: place.id.toString(),
+                      feedbackType: 'like'
+                    },
+                    { method: 'post' }
+                  );
+                }
               }}
-              disabled={fetcher.state === 'submitting'}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors disabled:opacity-50 ${
+              disabled={hasFeedback || isSubmitting}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                hasFeedback || isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+              } ${
                 hasLike 
                   ? 'bg-green-100 border-green-300 text-green-700' 
                   : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200'
@@ -475,17 +485,21 @@ function PlaceCard({
             
             <button
               onClick={() => {
-                fetcher.submit(
-                  {
-                    intent: 'feedback',
-                    placeId: place.id.toString(),
-                    feedbackType: 'dislike'
-                  },
-                  { method: 'post' }
-                );
+                if (!hasFeedback) {
+                  fetcher.submit(
+                    {
+                      intent: 'feedback',
+                      placeId: place.id.toString(),
+                      feedbackType: 'dislike'
+                    },
+                    { method: 'post' }
+                  );
+                }
               }}
-              disabled={fetcher.state === 'submitting'}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors disabled:opacity-50 ${
+              disabled={hasFeedback || isSubmitting}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                hasFeedback || isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+              } ${
                 hasDislike 
                   ? 'bg-red-100 border-red-300 text-red-700' 
                   : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200'
@@ -497,17 +511,21 @@ function PlaceCard({
             
             <button
               onClick={() => {
-                fetcher.submit(
-                  {
-                    intent: 'feedback',
-                    placeId: place.id.toString(),
-                    feedbackType: 'visited'
-                  },
-                  { method: 'post' }
-                );
+                if (!hasFeedback) {
+                  fetcher.submit(
+                    {
+                      intent: 'feedback',
+                      placeId: place.id.toString(),
+                      feedbackType: 'visited'
+                    },
+                    { method: 'post' }
+                  );
+                }
               }}
-              disabled={fetcher.state === 'submitting'}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors disabled:opacity-50 ${
+              disabled={hasFeedback || isSubmitting}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                hasFeedback || isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+              } ${
                 hasVisited 
                   ? 'bg-blue-100 border-blue-300 text-blue-700' 
                   : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200'
