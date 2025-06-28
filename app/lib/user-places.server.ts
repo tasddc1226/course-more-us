@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "~/lib/supabase.server";
-import { findOrCreateRegion } from "~/lib/recommendation.server";
+import { findOrCreateRegion } from "~/lib/data.server";
 import type { UserPlaceFormData } from "~/types/forms";
 import { createClient } from "@supabase/supabase-js";
 
