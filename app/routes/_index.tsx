@@ -590,7 +590,11 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ 
         error: null,
         recommendations: null,
-        feedbackResult: result
+        feedbackResult: {
+          placeId,
+          feedbackType,
+          isActive: result.action === 'created'
+        }
       });
     } catch (error) {
       console.error('Feedback error:', error);
