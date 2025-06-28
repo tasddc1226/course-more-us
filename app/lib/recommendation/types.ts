@@ -38,6 +38,10 @@ export interface Place {
     time_slot_id: number
     priority?: number
   }>
+  place_images?: Array<{
+    image_url: string
+    alt_text: string | null
+  }> | null
 }
 
 export interface PlaceScore {
