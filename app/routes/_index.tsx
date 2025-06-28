@@ -649,6 +649,10 @@ export async function action({ request }: ActionFunctionArgs) {
   const priceMin = priceMinRaw ? parseInt(priceMinRaw) : undefined;
   const priceMax = priceMaxRaw ? parseInt(priceMaxRaw) : undefined;
 
+  // 최소 평점 필터 (선택)
+  const minRatingRaw = formData.get('minRating') as string | null;
+  const minRating = minRatingRaw ? parseFloat(minRatingRaw) : undefined;
+
   if (!regionId || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
@@ -671,6 +675,7 @@ export async function action({ request }: ActionFunctionArgs) {
       date,
       timeSlotIds,
       priceRange,
+      minRating,
       maxResults: 12,
       diversityWeight: 0.3
     });
@@ -844,6 +849,23 @@ export default function Index() {
                   </label>
                 ))}
               </div>
+            </div>
+
+            {/* 최소 평점 필터 */}
+            <div>
+              <label htmlFor="minRating" className="block text-sm font-medium text-gray-700 mb-2">
+                최소 평점 (선택)
+              </label>
+              <select
+                id="minRating"
+                name="minRating"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="">제한 없음</option>
+                {[3,3.5,4,4.5,5].map((v)=>(
+                  <option key={v} value={v}>{v.toFixed(1)} 이상</option>
+                ))}
+              </select>
             </div>
 
             {/* 가격대 필터 */}

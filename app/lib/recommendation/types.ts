@@ -25,6 +25,8 @@ export interface AdvancedRecommendationRequest {
    * 예) [2,4] → 💰💰 이상 💰💰💰💰 이하.
    */
   priceRange?: [number, number]
+  /** 최소 평점 (0.5~5.0) */
+  minRating?: number
   maxResults?: number // 기본값: 12
   diversityWeight?: number // 기본값: 0.3
 }
