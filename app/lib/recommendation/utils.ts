@@ -22,6 +22,7 @@ export function convertToRecommendationPlace(supabasePlace: SupabasePlaceWithRel
       .map(pts => ({
         time_slot_id: pts.time_slot_id as number, // 이미 null을 필터링했으므로 안전한 타입 캐스팅
         priority: pts.priority ?? undefined
-      }))
+      })),
+    place_images: supabasePlace.place_images // 이미지 데이터 포함
   }
 }

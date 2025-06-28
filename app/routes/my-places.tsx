@@ -1,12 +1,13 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node'
 import { useLoaderData, Link, useSubmit, useActionData } from '@remix-run/react'
 import { getUserPlaces, deleteUserPlace, updateUserPlace } from '~/lib/user-places.server'
-import { getTimeSlots } from '~/lib/recommendation.server'
+import { getTimeSlots } from '~/lib/data.server'
 import { Button, Modal } from '~/components/ui'
 import { StarRating } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
 import { requireAuth } from '~/lib/auth.server'
 import { useState, useEffect } from 'react'
+import type { Tables } from '~/types/database.types'
 
 
 export const meta: MetaFunction = () => {
@@ -24,7 +25,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     getTimeSlots(request)
   ])
   
-  return json({ places, timeSlots })
+  return json({ 
+    places, 
+    timeSlots: timeSlots as Tables<'time_slots'>[] 
+  })
 }
 
 export async function action({ request }: ActionFunctionArgs) {

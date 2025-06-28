@@ -5,4 +5,14 @@ export { default as Textarea } from './Textarea';
 export { default as FormField } from './FormField';
 export { default as Modal } from './Modal';
 export { default as ErrorMessage } from './ErrorMessage';
-export { default as Calendar } from './Calendar'; 
+export { default as Calendar } from './Calendar';
+export { FeedbackModal } from './FeedbackModal';
+export { 
+  ConfettiCelebration, 
+  triggerCelebration, 
+  triggerFeedbackCelebration,
+  triggerSuccessCelebration,
+  triggerAchievementCelebration,
+  triggerLikeCelebration,
+  type CelebrationTypes
+} from './ConfettiCelebration'; 

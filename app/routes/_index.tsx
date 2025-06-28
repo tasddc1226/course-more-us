@@ -7,7 +7,7 @@ import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 
-import { Button, Calendar } from "~/components/ui";
+import { Button, Calendar, triggerCelebration } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
@@ -470,7 +470,7 @@ function PlaceCard({
               <div className="text-xs text-gray-600 mb-2">이 장소는 어떠셨나요?</div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
                     fetcher.submit(
                       {
                         intent: 'feedback',
@@ -479,6 +479,12 @@ function PlaceCard({
                       },
                       { method: 'post' }
                     );
+                    
+                    // 버튼 위치에서 폭죽 효과
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    triggerCelebration('like', { origin: { x, y } });
                   }}
                   disabled={isSubmitting}
                   className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
@@ -490,7 +496,7 @@ function PlaceCard({
                 </button>
                 
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
                     fetcher.submit(
                       {
                         intent: 'feedback',
@@ -499,6 +505,12 @@ function PlaceCard({
                       },
                       { method: 'post' }
                     );
+                    
+                    // 별로예요는 작은 효과만
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    triggerCelebration('like', { origin: { x, y } });
                   }}
                   disabled={isSubmitting}
                   className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
@@ -510,7 +522,7 @@ function PlaceCard({
                 </button>
                 
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
                     fetcher.submit(
                       {
                         intent: 'feedback',
@@ -519,6 +531,12 @@ function PlaceCard({
                       },
                       { method: 'post' }
                     );
+                    
+                    // 가봤어요는 성공 효과
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    triggerCelebration('success', { origin: { x, y } });
                   }}
                   disabled={isSubmitting}
                   className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${

@@ -1,7 +1,7 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@remix-run/node'
 import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-run/react'
 import { useState } from 'react'
-import { getCategories, getTimeSlots } from '~/lib/recommendation.server'
+import { getCategories, getTimeSlots } from '~/lib/data.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
 import { Button } from '~/components/ui'
 import { ClientOnlyKakaoMap, PageHeader } from '~/components/common'
@@ -9,6 +9,7 @@ import { ImageUpload, StarRating } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
 import { requireAuth } from '~/lib/auth.server'
 import type { PlaceLocationData } from '~/types/kakao-map'
+import type { Tables } from '~/types/database.types'
 
 export const meta: MetaFunction = () => {
   return [
@@ -26,7 +27,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     getTimeSlots(request)
   ])
 
-  return json({ categories, todayCount, timeSlots })
+  return json({ 
+    categories: categories as Tables<'categories'>[], 
+    todayCount, 
+    timeSlots: timeSlots as Tables<'time_slots'>[] 
+  })
 }
 
 export async function action({ request }: ActionFunctionArgs) {

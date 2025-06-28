@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from './supabase.server'
 import { getUser } from './auth.server'
-import type { Tables } from '~/types/database.types'
+import type { Tables, TablesInsert } from '~/types/database.types'
 
 export type FeedbackType = 'like' | 'dislike' | 'visited'
 export type UserFeedback = Tables<'user_recommendation_feedback'>
@@ -84,4 +84,66 @@ export async function getUserFeedbacksForPlaces(
   }
   
   return feedbackByPlace
+}
+
+// 개발자 피드백 저장
+export async function createUserFeedback(
+  request: Request,
+  content: string,
+  feedbackType: 'general' | 'bug_report' | 'feature_request' | 'improvement' = 'general',
+  title?: string
+): Promise<Tables<'user_feedback'>> {
+  const user = await getUser(request)
+  if (!user) {
+    throw new Error('인증이 필요합니다')
+  }
+
+  const supabase = createSupabaseServerClient(request)
+
+  const feedbackData: TablesInsert<'user_feedback'> = {
+    user_id: user.id,
+    feedback_type: feedbackType,
+    title: title || null,
+    content: content.trim(),
+    status: 'pending',
+    priority: 'medium'
+  }
+
+  const { data, error } = await supabase
+    .from('user_feedback')
+    .insert(feedbackData)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Database feedback error:', error)
+    throw new Error('피드백 저장 중 오류가 발생했습니다')
+  }
+
+  return data
+}
+
+// 사용자 피드백 목록 조회
+export async function getUserFeedbacks(
+  request: Request
+): Promise<Tables<'user_feedback'>[]> {
+  const user = await getUser(request)
+  if (!user) {
+    throw new Error('인증이 필요합니다')
+  }
+
+  const supabase = createSupabaseServerClient(request)
+
+  const { data, error } = await supabase
+    .from('user_feedback')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Get user feedbacks error:', error)
+    throw new Error('피드백 조회 중 오류가 발생했습니다')
+  }
+
+  return data || []
 }
