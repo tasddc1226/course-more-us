@@ -2,13 +2,12 @@ import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from '@remi
 import { json } from '@remix-run/node'
 import { useLoaderData, Link, Form, useActionData, useSubmit } from '@remix-run/react'
 import { useState, useEffect } from 'react'
-import confetti from 'canvas-confetti'
 import { requireAuth } from '~/lib/auth.server'
 import { isAdmin } from '~/lib/admin.server'
 import { getUserAgreements, toggleMarketingAgreement } from '~/lib/agreements.server'
 import { getUserProfile } from '~/lib/profile.server'
 import { createUserFeedback } from '~/lib/feedback.server'
-import { Button, FeedbackModal } from '~/components/ui'
+import { Button, FeedbackModal, triggerCelebration } from '~/components/ui'
 
 import { ROUTES } from '~/constants/routes'
 import { formatDate } from '~/utils/date'
@@ -87,40 +86,7 @@ export default function MyProfile() {
     submit(formData, { method: 'post' })
   }
 
-  // 폭죽 효과 함수 (절제된 버전)
-  const triggerConfetti = () => {
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7']
 
-    // 첫 번째 폭죽 (중앙에서)
-    confetti({
-      particleCount: 50,
-      angle: 90,
-      spread: 45,
-      origin: { x: 0.5, y: 0.7 },
-      colors: colors,
-      gravity: 0.8
-    })
-
-    // 0.2초 후 두 번째 폭죽 (좀 더 작게)
-    setTimeout(() => {
-      confetti({
-        particleCount: 30,
-        angle: 75,
-        spread: 35,
-        origin: { x: 0.3, y: 0.8 },
-        colors: colors,
-        gravity: 0.9
-      })
-      confetti({
-        particleCount: 30,
-        angle: 105,
-        spread: 35,
-        origin: { x: 0.7, y: 0.8 },
-        colors: colors,
-        gravity: 0.9
-      })
-    }, 200)
-  }
 
   // 피드백 전송 완료 시 모달 닫기 및 폭죽 효과
   useEffect(() => {
@@ -129,9 +95,7 @@ export default function MyProfile() {
       setIsFeedbackModalOpen(false)
       
       // 모달이 닫힌 후 폭죽 효과 실행
-      setTimeout(() => {
-        triggerConfetti()
-      }, 300) // 모달 닫힘 애니메이션 후
+      triggerCelebration('feedback', { delay: 300 }) // 모달 닫힘 애니메이션 후
     }
   }, [actionData, isSubmittingFeedback])
 
