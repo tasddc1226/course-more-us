@@ -207,7 +207,7 @@ function PlaceCard({ place, rank }: { place: PlaceWithTimeSlots; rank: number })
         </div>
         
         {place.tags && place.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 mb-3">
             {place.tags.slice(0, 3).map((tag, index) => (
               <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                 #{tag}
@@ -218,6 +218,63 @@ function PlaceCard({ place, rank }: { place: PlaceWithTimeSlots; rank: number })
                 +{place.tags.length - 3}
               </span>
             )}
+          </div>
+        )}
+        
+        {/* 추천 근거 상세 정보 */}
+        {place.scoreBreakdown && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <details className="cursor-pointer group">
+              <summary className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1">
+                <span>왜 이 장소를 추천했나요?</span>
+                <svg className="w-3 h-3 transform group-open:rotate-180 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </summary>
+              <div className="mt-2 space-y-1 pl-2">
+                {place.scoreBreakdown.partnership > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-green-700">
+                    <span className="w-4 text-center">🤝</span>
+                    <span>제휴 업체</span>
+                    <span className="font-medium">+{place.scoreBreakdown.partnership}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.rating > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-yellow-700">
+                    <span className="w-4 text-center">⭐</span>
+                    <span>평점 우수</span>
+                    <span className="font-medium">+{place.scoreBreakdown.rating.toFixed(1)}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.timeSlot > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-blue-700">
+                    <span className="w-4 text-center">⏰</span>
+                    <span>시간대 최적</span>
+                    <span className="font-medium">+{place.scoreBreakdown.timeSlot}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.popularity > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-red-700">
+                    <span className="w-4 text-center">🔥</span>
+                    <span>인기 장소</span>
+                    <span className="font-medium">+{place.scoreBreakdown.popularity}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.source > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-purple-700">
+                    <span className="w-4 text-center">✅</span>
+                    <span>관리자 추천</span>
+                    <span className="font-medium">+{place.scoreBreakdown.source}점</span>
+                  </div>
+                )}
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">총 추천 점수</span>
+                    <span className="font-bold text-purple-600">{Math.round(place.recommendationScore || 0)}점</span>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         )}
       </div>

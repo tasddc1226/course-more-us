@@ -216,5 +216,6 @@ function finalizeRecommendations(
       groupSize: p.groupSize,
       isPartnership: p.scoreBreakdown.partnership > 0,
       sources: p.sources,
+      scoreBreakdown: p.scoreBreakdown,
     }))
 } 

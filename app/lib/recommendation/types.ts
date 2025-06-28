@@ -32,6 +32,13 @@ export interface RecommendedPlace extends Record<string, any> {
   groupSize: number
   isPartnership: boolean
   sources: string[]
+  scoreBreakdown?: {
+    partnership: number
+    rating: number
+    timeSlot: number
+    popularity: number
+    source: number
+  }
 }
 
 export interface RecommendationResponse {
