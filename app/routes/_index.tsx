@@ -2,7 +2,8 @@ import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from "@remi
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, Link, Form, useNavigation, useFetcher } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
-import { getRegions, getTimeSlots, getAdvancedRecommendations } from "~/lib/recommendation.server";
+import { getRegions, getTimeSlots } from "~/lib/data.server";
+import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 

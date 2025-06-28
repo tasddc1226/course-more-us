@@ -1,3 +1,21 @@
+import { Database } from '~/types/database.types'
+
+// Supabase 관련 타입들
+export type SupabasePlaceWithRelations = Database['public']['Tables']['places']['Row'] & {
+  place_time_slots: Array<{
+    time_slot_id: number | null
+    priority: number | null
+  }>
+  place_images: Array<{
+    image_url: string
+    alt_text: string | null
+  }> | null
+  categories: {
+    name: string
+    icon: string | null
+  } | null
+}
+
 export interface AdvancedRecommendationRequest {
   regionId: number
   date: string
