@@ -11,6 +11,7 @@ import { Button, Calendar, triggerCelebration } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
+import { SearchBar } from "~/components/common";
 
 // 추천 결과 UI를 위한 타입 정의
 type TimeSlot = Tables<'time_slots'>;
@@ -748,6 +749,10 @@ export default function Index() {
               )}
             </Link>
           </div>
+        </div>
+        {/* 검색 바 */}
+        <div className="max-w-md mx-auto px-4 pb-4">
+          <SearchBar />
         </div>
       </header>
       
