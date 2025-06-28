@@ -1,12 +1,541 @@
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useActionData, Link, Form } from "@remix-run/react";
+import { useLoaderData, useActionData, Link, Form, useNavigation, useFetcher } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
-import { getRegions, getTimeSlots, getRecommendations } from "~/lib/recommendation.server";
-import { isAdmin } from "~/lib/admin.server";
-import { getUserProfile } from "~/lib/profile.server";
+import { getRegions, getTimeSlots } from "~/lib/data.server";
+import { getAdvancedRecommendations } from "~/lib/recommendation.server";
+
+import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
+
 import { Button, Calendar } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
+import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
+import type { Tables } from "~/types/database.types";
+
+// 추천 결과 UI를 위한 타입 정의
+type TimeSlot = Tables<'time_slots'>;
+type PlaceWithTimeSlots = RecommendedPlace & {
+  place_time_slots?: Array<{
+    time_slot_id: number;
+    priority?: number;
+  }>;
+  place_images?: Array<{
+    image_url: string;
+    alt_text?: string;
+  }>;
+  categories?: {
+    name: string;
+    icon?: string;
+  };
+  tags?: string[];
+  description?: string;
+  price_range?: number;
+};
+
+type TimeSlotGroup = {
+  timeSlot: TimeSlot;
+  places: PlaceWithTimeSlots[];
+};
+
+// 시간대별로 장소를 그룹화하는 헬퍼 함수
+function groupPlacesByTimeSlot(
+  places: PlaceWithTimeSlots[], 
+  timeSlots: TimeSlot[],
+  selectedTimeSlotIds: number[]
+): TimeSlotGroup[] {
+  const groups: TimeSlotGroup[] = [];
+  
+  // 선택된 시간대만 순회
+  const selectedTimeSlots = timeSlots.filter(ts => selectedTimeSlotIds.includes(ts.id));
+  
+  for (const timeSlot of selectedTimeSlots) {
+    const placesForTimeSlot = places.filter(place => 
+      place.place_time_slots?.some(pts => pts.time_slot_id === timeSlot.id)
+    );
+    
+    // 해당 시간대에 맞는 장소가 있으면 그룹에 추가
+    if (placesForTimeSlot.length > 0) {
+      groups.push({
+        timeSlot,
+        places: placesForTimeSlot.sort((a, b) => (b.recommendationScore || 0) - (a.recommendationScore || 0))
+      });
+    }
+  }
+  
+  return groups;
+}
+
+// 관리자용 메트릭 컴포넌트
+function AdminMetrics({ 
+  metadata 
+}: { 
+  metadata: RecommendationResponse['metadata'];
+}) {
+  return (
+    <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-orange-600">🔧</span>
+        <h4 className="font-semibold text-orange-800">관리자 전용 메트릭</h4>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="bg-white/60 rounded-lg p-3">
+          <div className="text-orange-700 font-medium mb-1">총 후보</div>
+          <div className="text-lg font-bold text-orange-900">{metadata.totalCandidates}개</div>
+        </div>
+        
+        <div className="bg-white/60 rounded-lg p-3">
+          <div className="text-orange-700 font-medium mb-1">실행 시간</div>
+          <div className="text-lg font-bold text-orange-900">{metadata.executionTime}ms</div>
+        </div>
+        
+        <div className="bg-white/60 rounded-lg p-3">
+          <div className="text-orange-700 font-medium mb-1">위치 그룹화</div>
+          <div className="text-lg font-bold text-orange-900">{metadata.filteringSteps.afterLocationGrouping}개</div>
+          <div className="text-xs text-orange-600">
+            -{metadata.totalCandidates - metadata.filteringSteps.afterLocationGrouping}개 병합
+          </div>
+        </div>
+        
+        <div className="bg-white/60 rounded-lg p-3">
+          <div className="text-orange-700 font-medium mb-1">다양성 필터</div>
+          <div className="text-lg font-bold text-orange-900">{metadata.filteringSteps.afterDiversityFilter}개</div>
+          <div className="text-xs text-orange-600">
+            -{metadata.filteringSteps.afterLocationGrouping - metadata.filteringSteps.afterDiversityFilter}개 제외
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-3 p-3 bg-white/60 rounded-lg">
+        <div className="text-orange-700 font-medium mb-2">필터링 단계별 변화</div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">
+            초기: {metadata.filteringSteps.initial}
+          </span>
+          <span>→</span>
+          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">
+            그룹화: {metadata.filteringSteps.afterLocationGrouping}
+          </span>
+          <span>→</span>
+          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">
+            다양성: {metadata.filteringSteps.afterDiversityFilter}
+          </span>
+          <span>→</span>
+          <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+            최종: {metadata.filteringSteps.final}
+          </span>
+        </div>
+      </div>
+      
+      <div className="mt-3 text-xs text-orange-600">
+        필터링 효율: {((metadata.filteringSteps.final / metadata.totalCandidates) * 100).toFixed(1)}% 
+        (총 {metadata.totalCandidates}개 중 {metadata.filteringSteps.final}개 선별)
+      </div>
+    </div>
+  );
+}
+
+// 추천 결과를 시간대별로 표시하는 컴포넌트
+function RecommendationResults({ 
+  recommendations, 
+  timeSlots,
+  isAdmin = false,
+  userFeedbacks = {}
+}: { 
+  recommendations: RecommendationResponse;
+  timeSlots: TimeSlot[];
+  isAdmin?: boolean;
+  userFeedbacks?: Record<number, UserFeedback[]>;
+}) {
+  const places = recommendations.places as PlaceWithTimeSlots[];
+  const selectedTimeSlotIds = recommendations.metadata.requestInfo.timeSlotIds;
+  
+  // 시간대별로 장소 그룹화
+  const timeSlotGroups = groupPlacesByTimeSlot(places, timeSlots, selectedTimeSlotIds);
+  
+  if (places.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-500 text-lg mb-4">😔</div>
+        <p className="text-gray-600">
+          선택하신 조건에 맞는 데이트 코스가 없습니다.<br />
+          다른 지역이나 시간대를 선택해보세요.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* 관리자용 메트릭 */}
+      {isAdmin && (
+        <AdminMetrics metadata={recommendations.metadata} />
+      )}
+      
+      <div className="text-center mb-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-2">
+          ✨ 추천 데이트 코스 ✨
+        </h3>
+        <p className="text-sm text-gray-600">
+          총 {places.length}개의 장소를 추천받았습니다
+        </p>
+        {!isAdmin && (
+          <div className="text-xs text-gray-500 mt-1">
+            실행 시간: {recommendations.metadata.executionTime}ms
+          </div>
+        )}
+      </div>
+
+      {timeSlotGroups.map((group) => (
+        <div key={group.timeSlot.id} className="mb-8">
+          <div className="mb-4">
+            <h4 className="text-lg font-semibold text-purple-800 mb-1">
+              {group.timeSlot.name}
+            </h4>
+            <p className="text-sm text-gray-600">
+              {group.timeSlot.start_time} - {group.timeSlot.end_time} • {group.places.length}개 장소
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            {group.places.map((place, index) => (
+              <PlaceCard 
+                key={`${place.id}-${group.timeSlot.id}`} 
+                place={place} 
+                rank={index + 1}
+                userFeedbacks={userFeedbacks[place.id] || []}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {timeSlotGroups.length === 0 && (
+        <div className="text-center py-8">
+          <div className="text-gray-500 text-lg mb-4">🤔</div>
+          <p className="text-gray-600">
+            선택하신 시간대에 맞는 장소를 찾을 수 없습니다.<br />
+            다른 시간대를 선택해보세요.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 스켈레톤 로딩 컴포넌트
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-64 mx-auto mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-48 mx-auto"></div>
+        </div>
+      </div>
+      
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden animate-pulse">
+          <div className="h-48 bg-gray-200"></div>
+          <div className="p-4 space-y-3">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2 flex-1">
+                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              </div>
+              <div className="h-8 bg-gray-200 rounded w-16"></div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            <div className="flex justify-between">
+              <div className="h-6 bg-gray-200 rounded w-24"></div>
+              <div className="h-6 bg-gray-200 rounded w-16"></div>
+            </div>
+          </div>
+        </div>
+      ))}
+      
+      <div className="text-center py-4">
+        <div className="inline-flex items-center gap-2 text-purple-600">
+          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">최적의 데이트 코스를 찾고 있어요...</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 개별 장소 카드 컴포넌트
+function PlaceCard({ 
+  place, 
+  rank, 
+  userFeedbacks 
+}: { 
+  place: PlaceWithTimeSlots; 
+  rank: number;
+  userFeedbacks?: UserFeedback[];
+}) {
+  const fetcher = useFetcher();
+  const feedbacks = userFeedbacks?.filter(f => f.place_id === place.id) || [];
+  
+  // 로컬 피드백 상태 (fetcher 결과를 우선 반영)
+  let hasLike = feedbacks.some(f => f.feedback_type === 'like');
+  let hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
+  let hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
+  
+  // fetcher 결과가 있으면 실시간 상태 업데이트
+  if (fetcher.data && typeof fetcher.data === 'object' && 'feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
+    const result = fetcher.data.feedbackResult as {
+      placeId: number;
+      feedbackType: FeedbackType;
+      isActive: boolean;
+    };
+    if (result.placeId === place.id) {
+      if (result.feedbackType === 'like') {
+        hasLike = result.isActive;
+      } else if (result.feedbackType === 'dislike') {
+        hasDislike = result.isActive;
+      } else if (result.feedbackType === 'visited') {
+        hasVisited = result.isActive;
+      }
+    }
+  }
+  
+  // 피드백이 이미 제출되었는지 확인 (한 번이라도 피드백을 남겼으면 비활성화)
+  const hasFeedback = hasLike || hasDislike || hasVisited;
+  const isSubmitting = fetcher.state === 'submitting';
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      {place.place_images && place.place_images.length > 0 && (
+        <img
+          src={place.place_images[0].image_url}
+          alt={place.place_images[0].alt_text || place.name || '장소 이미지'}
+          className="w-full h-48 object-cover"
+        />
+      )}
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-bold text-purple-600">#{rank}</span>
+              <h4 className="text-lg font-semibold text-gray-900">{place.name}</h4>
+            </div>
+            {place.categories && (
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                {place.categories.name}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col items-end text-sm text-gray-500 ml-2">
+            <div className="flex items-center">
+              <span className="text-yellow-400">⭐</span>
+              <span className="ml-1">{place.rating || 'N/A'}</span>
+            </div>
+            {place.recommendationScore && (
+              <div className="text-xs text-purple-600 mt-1">
+                추천 점수: {Math.round(place.recommendationScore)}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {place.description && (
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+            {place.description}
+          </p>
+        )}
+        
+        <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
+          <div className="flex items-center gap-3">
+            {place.price_range && (
+              <div className="flex items-center">
+                <span>💰</span>
+                <span className="ml-1">
+                  {'₩'.repeat(Math.min(place.price_range, 4))}
+                </span>
+              </div>
+            )}
+            {place.groupSize && place.groupSize > 1 && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                {place.groupSize}개 등록
+              </span>
+            )}
+          </div>
+          <div className="flex gap-1">
+            {place.isPartnership && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                제휴
+              </span>
+            )}
+            {place.sources?.includes('admin') && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                공식
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {place.tags && place.tags.length > 0 && (
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-1">
+              {place.tags.slice(0, 4).map((tag, index) => (
+                <span key={index} className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">
+                  #{tag}
+                </span>
+              ))}
+              {place.tags.length > 4 && (
+                <span className="text-xs bg-gray-50 text-gray-500 px-2 py-1 rounded-full border border-gray-200">
+                  +{place.tags.length - 4}개 더
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* 추천 근거 상세 정보 */}
+        {place.scoreBreakdown && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <details className="cursor-pointer group">
+              <summary className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1">
+                <span>왜 이 장소를 추천했나요?</span>
+                <svg className="w-3 h-3 transform group-open:rotate-180 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </summary>
+              <div className="mt-2 space-y-1 pl-2">
+                {place.scoreBreakdown.partnership > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-green-700">
+                    <span className="w-4 text-center">🤝</span>
+                    <span>제휴 업체</span>
+                    <span className="font-medium">+{place.scoreBreakdown.partnership}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.rating > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-yellow-700">
+                    <span className="w-4 text-center">⭐</span>
+                    <span>평점 우수</span>
+                    <span className="font-medium">+{place.scoreBreakdown.rating.toFixed(1)}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.timeSlot > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-blue-700">
+                    <span className="w-4 text-center">⏰</span>
+                    <span>시간대 최적</span>
+                    <span className="font-medium">+{place.scoreBreakdown.timeSlot}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.popularity > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-red-700">
+                    <span className="w-4 text-center">🔥</span>
+                    <span>인기 장소</span>
+                    <span className="font-medium">+{place.scoreBreakdown.popularity}점</span>
+                  </div>
+                )}
+                {place.scoreBreakdown.source > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-purple-700">
+                    <span className="w-4 text-center">✅</span>
+                    <span>관리자 추천</span>
+                    <span className="font-medium">+{place.scoreBreakdown.source}점</span>
+                  </div>
+                )}
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">총 추천 점수</span>
+                    <span className="font-bold text-purple-600">{Math.round(place.recommendationScore || 0)}점</span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        )}
+        
+        {/* 사용자 피드백 섹션 */}
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          {hasFeedback ? (
+            <div className="text-center py-2">
+              <div className="text-sm text-green-600 font-medium mb-1">
+                피드백을 남겨주셔서 감사합니다! 💝
+              </div>
+              <div className="text-xs text-gray-500">
+                {hasLike && '좋아요를 눌러주셨네요 😊'}
+                {hasDislike && '소중한 의견 감사합니다 🙏'}
+                {hasVisited && '방문 경험을 공유해주셔서 감사해요 ✨'}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="text-xs text-gray-600 mb-2">이 장소는 어떠셨나요?</div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    fetcher.submit(
+                      {
+                        intent: 'feedback',
+                        placeId: place.id.toString(),
+                        feedbackType: 'like'
+                      },
+                      { method: 'post' }
+                    );
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                    isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+                  } bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200`}
+                >
+                  <span>👍</span>
+                  <span>좋아요</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    fetcher.submit(
+                      {
+                        intent: 'feedback',
+                        placeId: place.id.toString(),
+                        feedbackType: 'dislike'
+                      },
+                      { method: 'post' }
+                    );
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                    isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+                  } bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200`}
+                >
+                  <span>👎</span>
+                  <span>별로예요</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    fetcher.submit(
+                      {
+                        intent: 'feedback',
+                        placeId: place.id.toString(),
+                        feedbackType: 'visited'
+                      },
+                      { method: 'post' }
+                    );
+                  }}
+                  disabled={isSubmitting}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                    isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+                  } bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200`}
+                >
+                  <span>📍</span>
+                  <span>가봤어요</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 
 export const meta: MetaFunction = () => {
@@ -22,18 +551,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const error = url.searchParams.get('error');
   
   if (user) {
-    // 로그인한 사용자에게는 추천 폼 데이터 제공
-    const [regions, timeSlots, userIsAdmin, profile] = await Promise.all([
+    // 캐싱된 API 호출로 rate limit 최적화
+    const [regions, timeSlots] = await Promise.all([
       getRegions(request),
-      getTimeSlots(request),
-      isAdmin(request),
-      getUserProfile(request)
+      getTimeSlots(request)
     ]);
     
-    return json({ user, profile, regions, timeSlots, isAdmin: userIsAdmin, error });
+    return json({ 
+      user, 
+      profile: null, 
+      regions: regions as Tables<'regions'>[], 
+      timeSlots: timeSlots as Tables<'time_slots'>[], 
+      isAdmin: false, 
+      error 
+    });
   }
   
-  return json({ user, profile: null, regions: [], timeSlots: [], isAdmin: false, error });
+  return json({ 
+    user, 
+    profile: null, 
+    regions: [] as Tables<'regions'>[], 
+    timeSlots: [] as Tables<'time_slots'>[], 
+    isAdmin: false, 
+    error 
+  });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -43,6 +584,43 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   const formData = await request.formData();
+  const intent = formData.get('intent') as string;
+
+  // 피드백 처리
+  if (intent === 'feedback') {
+    const placeId = parseInt(formData.get('placeId') as string);
+    const feedbackType = formData.get('feedbackType') as FeedbackType;
+
+    if (!placeId || !feedbackType) {
+      return json({ 
+        error: '피드백 정보가 올바르지 않습니다.',
+        recommendations: null,
+        feedbackResult: null
+      }, { status: 400 });
+    }
+
+    try {
+      const result = await toggleFeedback(request, placeId, feedbackType);
+      return json({ 
+        error: null,
+        recommendations: null,
+        feedbackResult: {
+          placeId,
+          feedbackType,
+          isActive: result.action === 'created'
+        }
+      });
+    } catch (error) {
+      console.error('Feedback error:', error);
+      return json({ 
+        error: '피드백 처리 중 오류가 발생했습니다.',
+        recommendations: null,
+        feedbackResult: null
+      }, { status: 500 });
+    }
+  }
+
+  // 추천 요청 처리
   const regionId = parseInt(formData.get('regionId') as string);
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
@@ -50,33 +628,45 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!regionId || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
-      recommendations: null 
+      recommendations: null,
+      userFeedbacks: null
     }, { status: 400 });
   }
 
   try {
-    const recommendations = await getRecommendations(request, {
+    const recommendations = await getAdvancedRecommendations(request, {
       regionId,
       date,
-      timeSlotIds
+      timeSlotIds,
+      maxResults: 12,
+      diversityWeight: 0.3
     });
+
+    // 추천 결과와 함께 사용자 피드백 정보도 가져오기
+    const placeIds = recommendations.places.map(place => place.id);
+    const userFeedbacks = await getUserFeedbacksForPlaces(request, placeIds);
 
     return json({ 
       error: null,
-      recommendations 
+      recommendations,
+      userFeedbacks
     });
   } catch (error) {
     console.error('Recommendation error:', error);
     return json({ 
       error: '추천을 가져오는 중 오류가 발생했습니다.',
-      recommendations: null 
+      recommendations: null,
+      userFeedbacks: null
     }, { status: 500 });
   }
 }
 
 export default function Index() {
-  const { user, profile, regions, timeSlots, error } = useLoaderData<typeof loader>();
+  const { user, regions, timeSlots, error, isAdmin: userIsAdmin } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  
+  const isLoading = navigation.state === 'submitting';
 
   if (!user) {
     return (
@@ -119,7 +709,7 @@ export default function Index() {
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-3">
             <span className="text-sm text-gray-600 hidden sm:block">
-              안녕하세요, {(profile?.nickname) || (user.user_metadata as Record<string, unknown>)?.full_name as string || '사용자'}님!
+              안녕하세요, {(user.user_metadata as Record<string, unknown>)?.full_name as string || '사용자'}님!
             </span>
             <Link to={ROUTES.MY_PROFILE} className="relative">
               {user.user_metadata?.avatar_url ? (
@@ -223,82 +813,33 @@ export default function Index() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              맞춤 데이트 코스 추천받기 💕
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  추천 중...
+                </div>
+              ) : (
+                '맞춤 데이트 코스 추천받기 💕'
+              )}
             </Button>
           </Form>
         </div>
 
         {/* 추천 결과 */}
-        {actionData?.recommendations && (
-          <div>
-            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              ✨ 추천 데이트 코스 ✨
-            </h3>
-            {(actionData.recommendations as { places?: unknown[] })?.places?.length > 0 ? (
-              <div className="space-y-4">
-                {((actionData.recommendations as { places?: Record<string, unknown>[] })?.places || []).map((place: Record<string, unknown>) => (
-                  <div key={place.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                    {place.place_images && place.place_images.length > 0 && (
-                      <img
-                        src={place.place_images[0].image_url}
-                        alt={place.name}
-                        className="w-full h-48 object-cover"
-                      />
-                    )}
-                    <div className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="text-lg font-semibold text-gray-900 mb-1">{place.name}</h4>
-                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                            {place.categories?.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500 ml-2">
-                          <span className="text-yellow-400">⭐</span>
-                          <span className="ml-1">{place.rating}</span>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                        {place.description}
-                      </p>
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                        <div className="flex items-center">
-                          <span>💰</span>
-                          <span className="ml-1">
-                            {'₩'.repeat(place.price_level)}
-                          </span>
-                        </div>
-                        {place.is_partnership && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            제휴
-                          </span>
-                        )}
-                      </div>
-                      {place.tags && place.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {place.tags.slice(0, 3).map((tag: string, index: number) => (
-                            <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-gray-500 text-lg mb-4">😔</div>
-                <p className="text-gray-600">
-                  선택하신 조건에 맞는 데이트 코스가 없습니다.<br />
-                  다른 지역이나 시간대를 선택해보세요.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : actionData?.recommendations ? (
+          <RecommendationResults 
+            recommendations={actionData.recommendations as RecommendationResponse}
+            timeSlots={timeSlots}
+            isAdmin={userIsAdmin}
+            userFeedbacks={actionData.userFeedbacks || {}}
+          />
+        ) : null}
       </main>
     </div>
   );

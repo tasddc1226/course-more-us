@@ -53,12 +53,18 @@ function Calendar({
   }
 
   const formatDateString = (date: Date) => {
-    return date.toISOString().split('T')[0]
+    // 로컬 시간대를 유지하면서 YYYY-MM-DD 형식으로 변환
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
 
   const formatDisplayDate = (dateString: string) => {
     if (!dateString) return ''
-    const date = new Date(dateString + 'T00:00:00')
+    // 로컬 시간대를 유지하면서 Date 객체 생성
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
     return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
