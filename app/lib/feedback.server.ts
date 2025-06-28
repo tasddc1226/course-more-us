@@ -1,16 +1,9 @@
 import { createSupabaseServerClient } from './supabase.server'
 import { getUser } from './auth.server'
+import type { Tables } from '~/types/database.types'
 
 export type FeedbackType = 'like' | 'dislike' | 'visited'
-
-export interface UserFeedback {
-  id: number
-  user_id: string
-  place_id: number
-  feedback_type: FeedbackType
-  created_at: string
-  updated_at: string
-}
+export type UserFeedback = Tables<'user_recommendation_feedback'>
 
 // 피드백 생성 또는 업데이트 (토글 방식)
 export async function toggleFeedback(

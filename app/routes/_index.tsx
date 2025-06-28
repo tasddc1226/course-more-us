@@ -5,6 +5,7 @@ import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
 import { getUserProfile } from "~/lib/profile.server";
+import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 
 import { Button, Calendar } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
@@ -136,11 +137,13 @@ function AdminMetrics({
 function RecommendationResults({ 
   recommendations, 
   timeSlots,
-  isAdmin = false
+  isAdmin = false,
+  userFeedbacks = {}
 }: { 
   recommendations: RecommendationResponse;
   timeSlots: TimeSlot[];
   isAdmin?: boolean;
+  userFeedbacks?: Record<number, UserFeedback[]>;
 }) {
   const places = recommendations.places as PlaceWithTimeSlots[];
   const selectedTimeSlotIds = recommendations.metadata.requestInfo.timeSlotIds;
@@ -194,7 +197,12 @@ function RecommendationResults({
           
           <div className="space-y-4">
             {group.places.map((place, index) => (
-              <PlaceCard key={`${place.id}-${group.timeSlot.id}`} place={place} rank={index + 1} />
+              <PlaceCard 
+                key={`${place.id}-${group.timeSlot.id}`} 
+                place={place} 
+                rank={index + 1}
+                userFeedbacks={userFeedbacks[place.id] || []}
+              />
             ))}
           </div>
         </div>
@@ -259,7 +267,19 @@ function LoadingSkeleton() {
 }
 
 // 개별 장소 카드 컴포넌트
-function PlaceCard({ place, rank }: { place: PlaceWithTimeSlots; rank: number }) {
+function PlaceCard({ 
+  place, 
+  rank, 
+  userFeedbacks 
+}: { 
+  place: PlaceWithTimeSlots; 
+  rank: number;
+  userFeedbacks?: UserFeedback[];
+}) {
+  const feedbacks = userFeedbacks?.filter(f => f.place_id === place.id) || [];
+  const hasLike = feedbacks.some(f => f.feedback_type === 'like');
+  const hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
+  const hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {place.place_images && place.place_images.length > 0 && (
@@ -405,6 +425,63 @@ function PlaceCard({ place, rank }: { place: PlaceWithTimeSlots; rank: number })
             </details>
           </div>
         )}
+        
+        {/* 사용자 피드백 버튼 */}
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="text-xs text-gray-600 mb-2">이 장소는 어떠셨나요?</div>
+          <div className="flex gap-2">
+            <Form method="post" className="inline">
+              <input type="hidden" name="intent" value="feedback" />
+              <input type="hidden" name="placeId" value={place.id} />
+              <input type="hidden" name="feedbackType" value="like" />
+              <button
+                type="submit"
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                  hasLike 
+                    ? 'bg-green-100 border-green-300 text-green-700' 
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-green-50 hover:border-green-200'
+                }`}
+              >
+                <span>{hasLike ? '💚' : '👍'}</span>
+                <span>좋아요</span>
+              </button>
+            </Form>
+            
+            <Form method="post" className="inline">
+              <input type="hidden" name="intent" value="feedback" />
+              <input type="hidden" name="placeId" value={place.id} />
+              <input type="hidden" name="feedbackType" value="dislike" />
+              <button
+                type="submit"
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                  hasDislike 
+                    ? 'bg-red-100 border-red-300 text-red-700' 
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200'
+                }`}
+              >
+                <span>{hasDislike ? '💔' : '👎'}</span>
+                <span>별로예요</span>
+              </button>
+            </Form>
+            
+            <Form method="post" className="inline">
+              <input type="hidden" name="intent" value="feedback" />
+              <input type="hidden" name="placeId" value={place.id} />
+              <input type="hidden" name="feedbackType" value="visited" />
+              <button
+                type="submit"
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs border transition-colors ${
+                  hasVisited 
+                    ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200'
+                }`}
+              >
+                <span>{hasVisited ? '✅' : '📍'}</span>
+                <span>가봤어요</span>
+              </button>
+            </Form>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -445,6 +522,39 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   const formData = await request.formData();
+  const intent = formData.get('intent') as string;
+
+  // 피드백 처리
+  if (intent === 'feedback') {
+    const placeId = parseInt(formData.get('placeId') as string);
+    const feedbackType = formData.get('feedbackType') as FeedbackType;
+
+    if (!placeId || !feedbackType) {
+      return json({ 
+        error: '피드백 정보가 올바르지 않습니다.',
+        recommendations: null,
+        feedbackResult: null
+      }, { status: 400 });
+    }
+
+    try {
+      const result = await toggleFeedback(request, placeId, feedbackType);
+      return json({ 
+        error: null,
+        recommendations: null,
+        feedbackResult: result
+      });
+    } catch (error) {
+      console.error('Feedback error:', error);
+      return json({ 
+        error: '피드백 처리 중 오류가 발생했습니다.',
+        recommendations: null,
+        feedbackResult: null
+      }, { status: 500 });
+    }
+  }
+
+  // 추천 요청 처리
   const regionId = parseInt(formData.get('regionId') as string);
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
@@ -452,7 +562,8 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!regionId || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
-      recommendations: null 
+      recommendations: null,
+      userFeedbacks: null
     }, { status: 400 });
   }
 
@@ -465,15 +576,21 @@ export async function action({ request }: ActionFunctionArgs) {
       diversityWeight: 0.3
     });
 
+    // 추천 결과와 함께 사용자 피드백 정보도 가져오기
+    const placeIds = recommendations.places.map(place => place.id);
+    const userFeedbacks = await getUserFeedbacksForPlaces(request, placeIds);
+
     return json({ 
       error: null,
-      recommendations 
+      recommendations,
+      userFeedbacks
     });
   } catch (error) {
     console.error('Recommendation error:', error);
     return json({ 
       error: '추천을 가져오는 중 오류가 발생했습니다.',
-      recommendations: null 
+      recommendations: null,
+      userFeedbacks: null
     }, { status: 500 });
   }
 }
@@ -654,6 +771,7 @@ export default function Index() {
             recommendations={actionData.recommendations as RecommendationResponse}
             timeSlots={timeSlots}
             isAdmin={userIsAdmin}
+            userFeedbacks={actionData.userFeedbacks || {}}
           />
         ) : null}
       </main>
