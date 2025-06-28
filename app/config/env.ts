@@ -30,7 +30,12 @@ export const env = {
   NODE_ENV: isServer ? (process.env.NODE_ENV || 'development') : 'development',
   
   // URL 설정
-  BASE_URL: isServer ? (process.env.BASE_URL || 'http://localhost:3000') : 'http://localhost:3000'
+  BASE_URL: isServer ? (process.env.BASE_URL || 'http://localhost:3000') : 'http://localhost:3000',
+
+  // Resend 설정
+  // RESEND_API_KEY: isServer ? process.env.RESEND_API_KEY! : '',
+  // RESEND_FROM_EMAIL: isServer ? process.env.RESEND_FROM_EMAIL! : '',
+  // DEVELOPER_EMAIL: isServer ? process.env.DEVELOPER_EMAIL! : '',
 } as const;
 
 /**

@@ -1,11 +1,14 @@
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { useLoaderData, Link, Form, useActionData, useSubmit } from '@remix-run/react'
+import { useState, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import { requireAuth } from '~/lib/auth.server'
 import { isAdmin } from '~/lib/admin.server'
 import { getUserAgreements, toggleMarketingAgreement } from '~/lib/agreements.server'
 import { getUserProfile } from '~/lib/profile.server'
-import { Button } from '~/components/ui'
+import { createUserFeedback } from '~/lib/feedback.server'
+import { Button, FeedbackModal } from '~/components/ui'
 
 import { ROUTES } from '~/constants/routes'
 import { formatDate } from '~/utils/date'
@@ -42,6 +45,14 @@ export async function action({ request }: ActionFunctionArgs) {
         await toggleMarketingAgreement(request)
         return json({ success: true, message: '마케팅 수신 동의 설정이 변경되었습니다.' })
       }
+      case 'sendFeedback': {
+        const feedback = formData.get('feedback') as string
+        if (!feedback?.trim()) {
+          return json({ error: '피드백 내용을 입력해주세요.' }, { status: 400 })
+        }
+        await createUserFeedback(request, feedback.trim(), 'general')
+        return json({ success: true, message: '피드백이 성공적으로 저장되었습니다. 소중한 의견 감사합니다!' })
+      }
       default:
         return json({ error: '잘못된 액션입니다.' }, { status: 400 })
     }
@@ -57,12 +68,72 @@ export default function MyProfile() {
   const { user, profile, isAdmin: userIsAdmin, marketingAgreed, marketingAgreedAt } = useLoaderData<typeof loader>()
   const actionData = useActionData<typeof action>()
   const submit = useSubmit()
+  
+  // 피드백 모달 상태
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
 
   const handleMarketingToggle = () => {
     const formData = new FormData()
     formData.append('action', 'toggleMarketing')
     submit(formData, { method: 'post' })
   }
+
+  const handleFeedbackSubmit = (feedback: string) => {
+    setIsSubmittingFeedback(true)
+    const formData = new FormData()
+    formData.append('action', 'sendFeedback')
+    formData.append('feedback', feedback)
+    submit(formData, { method: 'post' })
+  }
+
+  // 폭죽 효과 함수 (절제된 버전)
+  const triggerConfetti = () => {
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7']
+
+    // 첫 번째 폭죽 (중앙에서)
+    confetti({
+      particleCount: 50,
+      angle: 90,
+      spread: 45,
+      origin: { x: 0.5, y: 0.7 },
+      colors: colors,
+      gravity: 0.8
+    })
+
+    // 0.2초 후 두 번째 폭죽 (좀 더 작게)
+    setTimeout(() => {
+      confetti({
+        particleCount: 30,
+        angle: 75,
+        spread: 35,
+        origin: { x: 0.3, y: 0.8 },
+        colors: colors,
+        gravity: 0.9
+      })
+      confetti({
+        particleCount: 30,
+        angle: 105,
+        spread: 35,
+        origin: { x: 0.7, y: 0.8 },
+        colors: colors,
+        gravity: 0.9
+      })
+    }, 200)
+  }
+
+  // 피드백 전송 완료 시 모달 닫기 및 폭죽 효과
+  useEffect(() => {
+    if (actionData && 'success' in actionData && actionData.success && isSubmittingFeedback) {
+      setIsSubmittingFeedback(false)
+      setIsFeedbackModalOpen(false)
+      
+      // 모달이 닫힌 후 폭죽 효과 실행
+      setTimeout(() => {
+        triggerConfetti()
+      }, 300) // 모달 닫힘 애니메이션 후
+    }
+  }, [actionData, isSubmittingFeedback])
 
   const menuItems = [
     {
@@ -89,6 +160,12 @@ export default function MyProfile() {
       icon: '⚙️',
       href: ROUTES.ADMIN,
     }] : []),
+    {
+      title: '피드백',
+      description: '개발자에게 의견 보내기',
+      icon: '💬',
+      onClick: () => setIsFeedbackModalOpen(true),
+    },
   ]
 
   return (
@@ -188,12 +265,8 @@ export default function MyProfile() {
 
         {/* 메뉴 섹션 */}
         <div className="space-y-3">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className="block bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200"
-            >
+          {menuItems.map((item, index) => {
+            const content = (
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-xl">
                   {item.icon}
@@ -206,8 +279,32 @@ export default function MyProfile() {
                   →
                 </div>
               </div>
-            </Link>
-          ))}
+            )
+
+            if ('href' in item && item.href) {
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="block bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200"
+                >
+                  {content}
+                </Link>
+              )
+            } else if ('onClick' in item) {
+              return (
+                <button
+                  key={index}
+                  onClick={item.onClick}
+                  className="w-full text-left bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-lg hover:shadow-xl hover:bg-white transition-all duration-200"
+                >
+                  {content}
+                </button>
+              )
+            }
+            
+            return null
+          })}
         </div>
 
         {/* 로그아웃 버튼 */}
@@ -223,6 +320,14 @@ export default function MyProfile() {
           </Form>
         </div>
       </div>
+
+      {/* 피드백 모달 */}
+      <FeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        onSubmit={handleFeedbackSubmit}
+        isSubmitting={isSubmittingFeedback}
+      />
     </div>
   )
 } 

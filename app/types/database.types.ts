@@ -389,6 +389,42 @@ export type Database = {
           },
         ]
       }
+      user_feedback: {
+        Row: {
+          id: number
+          user_id: string
+          feedback_type: string
+          title: string | null
+          content: string
+          status: string
+          priority: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          feedback_type?: string
+          title?: string | null
+          content: string
+          status?: string
+          priority?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          feedback_type?: string
+          title?: string | null
+          content?: string
+          status?: string
+          priority?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
