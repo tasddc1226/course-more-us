@@ -20,6 +20,11 @@ export interface AdvancedRecommendationRequest {
   regionId: number
   date: string
   timeSlotIds: number[]
+  /**
+   * 가격대 필터 (min, max) – 1~5 구간.
+   * 예) [2,4] → 💰💰 이상 💰💰💰💰 이하.
+   */
+  priceRange?: [number, number]
   maxResults?: number // 기본값: 12
   diversityWeight?: number // 기본값: 0.3
 }

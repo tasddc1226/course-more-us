@@ -113,7 +113,7 @@ export async function getAdvancedRecommendations(
 
 async function fetchFilteredPlaces(
   request: Request,
-  { regionId, timeSlotIds }: AdvancedRecommendationRequest,
+  { regionId, timeSlotIds, priceRange }: AdvancedRecommendationRequest,
 ) {
   const supabase = createSupabaseServerClient(request)
 
@@ -128,6 +128,9 @@ async function fetchFilteredPlaces(
     .eq('region_id', regionId)
     .eq('is_active', true)
     .in('place_time_slots.time_slot_id', timeSlotIds)
+    // 가격대 필터 적용 (옵션)
+    .gte('price_range', priceRange ? priceRange[0] : 1)
+    .lte('price_range', priceRange ? priceRange[1] : 5)
 
   if (error) throw error
   

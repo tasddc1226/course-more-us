@@ -643,6 +643,12 @@ export async function action({ request }: ActionFunctionArgs) {
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
 
+  // 가격대 필터 (선택)
+  const priceMinRaw = formData.get('priceMin') as string | null;
+  const priceMaxRaw = formData.get('priceMax') as string | null;
+  const priceMin = priceMinRaw ? parseInt(priceMinRaw) : undefined;
+  const priceMax = priceMaxRaw ? parseInt(priceMaxRaw) : undefined;
+
   if (!regionId || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
@@ -651,11 +657,20 @@ export async function action({ request }: ActionFunctionArgs) {
     }, { status: 400 });
   }
 
+  // price range sanity check (min > max 인 경우 스왑)
+  let priceRange: [number, number] | undefined = undefined;
+  if (priceMin !== undefined || priceMax !== undefined) {
+    const min = priceMin ?? 1;
+    const max = priceMax ?? 5;
+    priceRange = min <= max ? [min, max] : [max, min];
+  }
+
   try {
     const recommendations = await getAdvancedRecommendations(request, {
       regionId,
       date,
       timeSlotIds,
+      priceRange,
       maxResults: 12,
       diversityWeight: 0.3
     });
@@ -828,6 +843,45 @@ export default function Index() {
                     </div>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* 가격대 필터 */}
+            <div>
+              <div className="block text-sm font-medium text-gray-700 mb-3">
+                가격대 (선택)
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="priceMin" className="text-sm text-gray-600 mb-1 block">
+                    최소 💰
+                  </label>
+                  <select
+                    id="priceMin"
+                    name="priceMin"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="">제한 없음</option>
+                    {[1,2,3,4,5].map((v)=>(
+                      <option key={v} value={v}>{'💰'.repeat(v)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="priceMax" className="text-sm text-gray-600 mb-1 block">
+                    최대 💰
+                  </label>
+                  <select
+                    id="priceMax"
+                    name="priceMax"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="">제한 없음</option>
+                    {[1,2,3,4,5].map((v)=>(
+                      <option key={v} value={v}>{'💰'.repeat(v)}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
