@@ -207,17 +207,20 @@ function PlaceCard({ place, rank }: { place: PlaceWithTimeSlots; rank: number })
         </div>
         
         {place.tags && place.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {place.tags.slice(0, 3).map((tag, index) => (
-              <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                #{tag}
-              </span>
-            ))}
-            {place.tags.length > 3 && (
-              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
-                +{place.tags.length - 3}
-              </span>
-            )}
+          <div className="mb-3">
+            <div className="text-xs text-gray-500 mb-1">태그</div>
+            <div className="flex flex-wrap gap-1">
+              {place.tags.slice(0, 4).map((tag, index) => (
+                <span key={index} className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">
+                  #{tag}
+                </span>
+              ))}
+              {place.tags.length > 4 && (
+                <span className="text-xs bg-gray-50 text-gray-500 px-2 py-1 rounded-full border border-gray-200">
+                  +{place.tags.length - 4}개 더
+                </span>
+              )}
+            </div>
           </div>
         )}
         
