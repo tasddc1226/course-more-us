@@ -4,7 +4,7 @@ import { useLoaderData, useActionData, Link, Form, useNavigation, useFetcher } f
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots, getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { isAdmin } from "~/lib/admin.server";
-import { getUserProfile } from "~/lib/profile.server";
+
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 
 import { Button, Calendar } from "~/components/ui";
@@ -550,14 +550,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   if (user) {
     // 로그인한 사용자에게는 추천 폼 데이터 제공
-    const [regions, timeSlots, userIsAdmin, profile] = await Promise.all([
+    // rate limit 방지를 위해 getUserProfile 대신 user.user_metadata 사용
+    const [regions, timeSlots, userIsAdmin] = await Promise.all([
       getRegions(request),
       getTimeSlots(request),
-      isAdmin(request),
-      getUserProfile(request)
+      isAdmin(request)
     ]);
     
-    return json({ user, profile, regions, timeSlots, isAdmin: userIsAdmin, error });
+    return json({ user, profile: null, regions, timeSlots, isAdmin: userIsAdmin, error });
   }
   
   return json({ user, profile: null, regions: [], timeSlots: [], isAdmin: false, error });
@@ -695,7 +695,7 @@ export default function Index() {
           <h1 className="text-2xl font-bold text-purple-600">코스모스</h1>
           <div className="flex items-center space-x-3">
             <span className="text-sm text-gray-600 hidden sm:block">
-              안녕하세요, {(profile?.nickname) || (user.user_metadata as Record<string, unknown>)?.full_name as string || '사용자'}님!
+              안녕하세요, {(user.user_metadata as Record<string, unknown>)?.full_name as string || '사용자'}님!
             </span>
             <Link to={ROUTES.MY_PROFILE} className="relative">
               {user.user_metadata?.avatar_url ? (
