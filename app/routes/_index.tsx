@@ -378,7 +378,6 @@ function PlaceCard({
         
         {place.tags && place.tags.length > 0 && (
           <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">태그</div>
             <div className="flex flex-wrap gap-1">
               {place.tags.slice(0, 4).map((tag, index) => (
                 <span key={index} className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">
