@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { Link, useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData, useNavigate } from "@remix-run/react";
 import { searchPlaces, type PlaceSearchResult } from "~/lib/search.server";
 import { SearchBar } from "~/components/common";
 import { getUser } from "~/lib/auth.server";
@@ -26,6 +26,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 function ResultCard({ place }: { place: PlaceSearchResult }) {
+  const navigate = useNavigate();
+
+  const handleTagClick = (tag: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/search?q=${encodeURIComponent(tag)}`);
+  };
+
   return (
     <Link
       to={`/${place.id}`}
@@ -46,11 +54,36 @@ function ResultCard({ place }: { place: PlaceSearchResult }) {
         <div className="font-semibold text-gray-800 mb-1 line-clamp-1">
           {place.name}
         </div>
-        {place.region && (
-          <div className="text-xs text-gray-500 mb-1">{place.region.name}</div>
-        )}
+        <div className="flex items-center gap-2 mb-2">
+          {place.region && (
+            <span className="text-xs text-gray-500">{place.region.name}</span>
+          )}
+          {place.category && (
+            <span className="text-xs text-gray-500">
+              {place.category.icon} {place.category.name}
+            </span>
+          )}
+        </div>
         {place.description && (
-          <p className="text-xs text-gray-600 line-clamp-2">{place.description}</p>
+          <p className="text-xs text-gray-600 line-clamp-2 mb-2">{place.description}</p>
+        )}
+        {place.tags && place.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1">
+            {place.tags.slice(0, 4).map((tag, index) => (
+              <button
+                key={index}
+                onClick={(e) => handleTagClick(tag, e)}
+                className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+              >
+                #{tag}
+              </button>
+            ))}
+            {place.tags.length > 4 && (
+              <span className="text-xs text-gray-400 px-1">
+                +{place.tags.length - 4}개
+              </span>
+            )}
+          </div>
         )}
       </div>
     </Link>
@@ -72,16 +105,28 @@ export default function SearchPage() {
 
       <main className="max-w-md mx-auto px-4 py-6 space-y-4">
         {q ? (
-          <h2 className="text-sm text-gray-500">
-            <span className="font-semibold text-purple-600">{q}</span> 검색 결과 {results.length}
-            개
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm text-gray-500">
+              <span className="font-semibold text-purple-600">{q}</span> 검색 결과 {results.length}개
+            </h2>
+            {results.length > 0 && (
+              <div className="text-xs text-gray-400">
+                이름·태그·설명 기준 정렬
+              </div>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-gray-500">검색어를 입력하세요.</p>
         )}
 
         {results.length === 0 && q && (
-          <p className="text-center text-gray-500 py-8">검색 결과가 없습니다.</p>
+          <div className="text-center py-8">
+            <div className="text-gray-400 text-4xl mb-4">🔍</div>
+            <p className="text-gray-500 mb-2">검색 결과가 없습니다.</p>
+            <p className="text-xs text-gray-400">
+              다른 키워드나 태그로 검색해보세요.
+            </p>
+          </div>
         )}
 
         {results.map((place: PlaceSearchResult) => (
