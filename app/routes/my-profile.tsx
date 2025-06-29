@@ -118,6 +118,12 @@ export default function MyProfile() {
       icon: '➕',
       href: ROUTES.REGISTER_PLACE,
     },
+    {
+      title: '내 즐겨찾기',
+      description: '즐겨찾기한 데이트 장소 확인',
+      icon: '❤️',
+      href: ROUTES.MY_FAVORITES,
+    },
     ...(userIsAdmin ? [{
       title: '관리자',
       description: '시스템 관리 및 설정',
