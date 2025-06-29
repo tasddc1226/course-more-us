@@ -24,6 +24,7 @@ export default function SearchBar({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([]);
   const [popularTags, setPopularTags] = useState<TagSuggestion[]>([]);
+  const [hasLoadedPopularTags, setHasLoadedPopularTags] = useState(false);
   
   const navigation = useNavigation();
   const fetcher = useFetcher();
@@ -32,39 +33,43 @@ export default function SearchBar({
   
   const isSubmitting = navigation.state === "submitting";
 
-  // 인기 태그 로드
+  // 인기 태그 로드 (한 번만)
   useEffect(() => {
-    if (showPopularTags) {
+    if (showPopularTags && !hasLoadedPopularTags) {
       fetcher.load('/api/tags/popular');
+      setHasLoadedPopularTags(true);
     }
-  }, [showPopularTags, fetcher]);
+  }, [showPopularTags, hasLoadedPopularTags]); // fetcher 제거하여 무한 루프 방지
 
   // 인기 태그 데이터 업데이트
   useEffect(() => {
-    if (fetcher.data && fetcher.data.popularTags) {
-      setPopularTags(fetcher.data.popularTags);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = fetcher.data as any;
+    if (data && data.popularTags) {
+      setPopularTags(data.popularTags);
     }
   }, [fetcher.data]);
 
-  // 태그 자동완성 요청
+  // 태그 자동완성 요청 (디바운스 적용)
   useEffect(() => {
     if (query.length >= 1 && showTagSuggestions) {
-      const timeoutId = setTimeout(() => {
-        fetcher.load(`/api/tags/suggestions?q=${encodeURIComponent(query)}`);
+      const timeoutId = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/tags/suggestions?q=${encodeURIComponent(query)}`);
+          const data = await response.json();
+          if (data.suggestions) {
+            setSuggestions(data.suggestions.map((tag: string) => ({ tag })));
+          }
+        } catch (error) {
+          console.error('Error fetching tag suggestions:', error);
+        }
       }, 300);
       
       return () => clearTimeout(timeoutId);
     } else {
       setSuggestions([]);
     }
-  }, [query, showTagSuggestions, fetcher]);
-
-  // 자동완성 데이터 업데이트
-  useEffect(() => {
-    if (fetcher.data && fetcher.data.suggestions) {
-      setSuggestions(fetcher.data.suggestions.map((tag: string) => ({ tag })));
-    }
-  }, [fetcher.data]);
+  }, [query, showTagSuggestions]);
 
   // 외부 클릭 시 자동완성 숨기기
   useEffect(() => {
@@ -110,7 +115,7 @@ export default function SearchBar({
     }
   };
 
-  const displaySuggestions = showSuggestions && (suggestions.length > 0 || popularTags.length > 0);
+  const displaySuggestions = showSuggestions && (suggestions.length > 0 || (popularTags.length > 0 && !query));
 
   return (
     <div className={cn("relative w-full max-w-md", className)}>
