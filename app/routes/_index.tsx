@@ -12,6 +12,7 @@ import { Button, Calendar, triggerCelebration } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
+import { useState, useEffect } from "react";
 
 // 추천 결과 UI를 위한 타입 정의
 type TimeSlot = Tables<'time_slots'>;
@@ -285,50 +286,54 @@ function PlaceCard({
   isFavorite?: boolean;
 }) {
   const fetcher = useFetcher();
-  const feedbacks = userFeedbacks?.filter(f => f.place_id === place.id) || [];
-  
-  // 로컬 피드백 상태 (fetcher 결과를 우선 반영)
-  let hasLike = feedbacks.some(f => f.feedback_type === 'like');
-  let hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
-  let hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
-  
-  // 즐겨찾기 상태 (로컬 상태)
-  let currentIsFavorite = isFavorite;
-  
-  // fetcher 결과가 있으면 실시간 상태 업데이트
-  if (fetcher.data && typeof fetcher.data === 'object') {
-    // 피드백 결과 처리
-    if ('feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
-      const result = fetcher.data.feedbackResult as {
-        placeId: number;
-        feedbackType: FeedbackType;
-        isActive: boolean;
-      };
-      if (result.placeId === place.id) {
-        if (result.feedbackType === 'like') {
-          hasLike = result.isActive;
-        } else if (result.feedbackType === 'dislike') {
-          hasDislike = result.isActive;
-        } else if (result.feedbackType === 'visited') {
-          hasVisited = result.isActive;
+
+  // 초기 피드백/즐겨찾기 상태 계산
+  const initialFeedbackState = {
+    like: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'like') || false,
+    dislike: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'dislike') || false,
+    visited: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'visited') || false,
+  };
+
+  // 로컬 상태: 즐겨찾기 & 피드백
+  const [favorite, setFavorite] = useState<boolean>(isFavorite);
+  const [feedbackState, setFeedbackState] = useState<typeof initialFeedbackState>(initialFeedbackState);
+
+  // prop 변경(다른 장소로 카드 재사용 등) 시 상태 동기화
+  useEffect(() => {
+    setFavorite(isFavorite);
+  }, [isFavorite, place.id]);
+
+  useEffect(() => {
+    setFeedbackState({
+      like: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'like') || false,
+      dislike: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'dislike') || false,
+      visited: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'visited') || false,
+    });
+  }, [userFeedbacks, place.id]);
+
+  // fetcher 결과에 따라 로컬 상태 업데이트
+  useEffect(() => {
+    if (fetcher.data && typeof fetcher.data === 'object') {
+      if ('favoriteResult' in fetcher.data && fetcher.data.favoriteResult) {
+        const result = fetcher.data.favoriteResult as { placeId: number; isFavorite: boolean };
+        if (result.placeId === place.id) {
+          setFavorite(result.isFavorite);
+        }
+      }
+
+      if ('feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
+        const result = fetcher.data.feedbackResult as { placeId: number; feedbackType: FeedbackType; isActive: boolean };
+        if (result.placeId === place.id) {
+          setFeedbackState(prev => ({
+            ...prev,
+            [result.feedbackType]: result.isActive,
+          }));
         }
       }
     }
-    
-    // 즐겨찾기 결과 처리
-    if ('favoriteResult' in fetcher.data && fetcher.data.favoriteResult) {
-      const result = fetcher.data.favoriteResult as {
-        placeId: number;
-        isFavorite: boolean;
-      };
-      if (result.placeId === place.id) {
-        currentIsFavorite = result.isFavorite;
-      }
-    }
-  }
-  
-  // 피드백이 이미 제출되었는지 확인 (한 번이라도 피드백을 남겼으면 비활성화)
-  const hasFeedback = hasLike || hasDislike || hasVisited;
+  }, [fetcher.data, place.id]);
+
+  const hasFeedback = feedbackState.like || feedbackState.dislike || feedbackState.visited;
   const isSubmitting = fetcher.state === 'submitting';
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -380,15 +385,15 @@ function PlaceCard({
               className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
                 isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
               } ${
-                currentIsFavorite 
+                favorite 
                   ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
                   : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
               }`}
-              title={currentIsFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              title={favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
             >
               <svg 
                 className="w-5 h-5" 
-                fill={currentIsFavorite ? 'currentColor' : 'none'} 
+                fill={favorite ? 'currentColor' : 'none'} 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
               >
@@ -521,9 +526,9 @@ function PlaceCard({
                 피드백을 남겨주셔서 감사합니다! 💝
               </div>
               <div className="text-xs text-gray-500">
-                {hasLike && '좋아요를 눌러주셨네요 😊'}
-                {hasDislike && '소중한 의견 감사합니다 🙏'}
-                {hasVisited && '방문 경험을 공유해주셔서 감사해요 ✨'}
+                {feedbackState.like && '좋아요를 눌러주셨네요 😊'}
+                {feedbackState.dislike && '소중한 의견 감사합니다 🙏'}
+                {feedbackState.visited && '방문 경험을 공유해주셔서 감사해요 ✨'}
               </div>
             </div>
           ) : (

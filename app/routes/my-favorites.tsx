@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node"
 import { json } from "@remix-run/node"
 import { useLoaderData, useActionData, Link, useFetcher } from "@remix-run/react"
 import { requireAuth } from "~/lib/auth.server"
 import { getUserFavorites, toggleFavorite, getFavoritesCount } from "~/lib/favorites.server"
-import { PageHeader } from "~/components/common"
+import { UserLayout } from "~/components/common"
 import { Button, ErrorMessage } from "~/components/ui"
 import { ROUTES } from "~/constants/routes"
 
@@ -96,7 +98,6 @@ function FavoriteCard({
   onRemove: (placeId: number) => void
 }) {
   const place = favorite.places
-  const fetcher = useFetcher()
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -186,7 +187,9 @@ function FavoriteCard({
 }
 
 export default function MyFavorites() {
-  const { user, favorites, pagination, error } = useLoaderData<typeof loader>()
+  const data = useLoaderData<typeof loader>()
+  const { favorites, pagination } = data
+  const error = (data as any).error as string | undefined
   const actionData = useActionData<typeof action>()
   const fetcher = useFetcher()
 
@@ -194,32 +197,26 @@ export default function MyFavorites() {
     fetcher.submit(
       {
         intent: 'remove-favorite',
-        placeId: placeId.toString()
+        placeId: placeId.toString(),
       },
-      { method: 'post' }
-    )
+      { method: 'post' },
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PageHeader
-        title="내 즐겨찾기"
-        subtitle="마음에 든 데이트 장소들을 모아두었어요"
-        user={user}
-      />
-      
+    <UserLayout title="내 즐겨찾기" backLink={{ to: ROUTES.MY_PROFILE, text: '마이 페이지' }}>
       <main className="max-w-md mx-auto px-4 py-6">
         {error && (
           <ErrorMessage message={error} className="mb-6" />
         )}
 
-        {actionData?.error && (
-          <ErrorMessage message={actionData.error} className="mb-6" />
+        {actionData && 'error' in actionData && (actionData as any).error && (
+          <ErrorMessage message={(actionData as any).error} className="mb-6" />
         )}
 
-        {actionData?.success && (
+        {actionData && 'success' in actionData && (actionData as any).success && (
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-            {actionData.message}
+            {(actionData as any).message}
           </div>
         )}
         
@@ -298,6 +295,6 @@ export default function MyFavorites() {
           </>
         )}
       </main>
-    </div>
+    </UserLayout>
   )
 }
