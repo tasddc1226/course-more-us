@@ -745,7 +745,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
       recommendations: null,
-      userFeedbacks: null
+      userFeedbacks: null,
+      userFavorites: null
     }, { status: 400 });
   }
 
@@ -776,7 +777,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ 
       error: '추천을 가져오는 중 오류가 발생했습니다.',
       recommendations: null,
-      userFeedbacks: null
+      userFeedbacks: null,
+      userFavorites: null
     }, { status: 500 });
   }
 }
