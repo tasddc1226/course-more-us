@@ -165,7 +165,7 @@ export default function SearchBar({
                   className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 transition-colors"
                 >
                   <span className="text-purple-600">#</span>
-                  <span>{suggestion.tag}</span>
+                  <span className="text-gray-900">{suggestion.tag}</span>
                 </button>
               ))}
             </div>

@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useLoaderData, useNavigate } from "@remix-run/react";
 import { searchPlaces, type PlaceSearchResult } from "~/lib/search.server";
-import { SearchBar } from "~/components/common";
+import { SearchBar, UserLayout } from "~/components/common";
 import { getUser } from "~/lib/auth.server";
 import { ROUTES } from "~/constants/routes";
 
@@ -95,32 +95,29 @@ export default function SearchPage() {
   const { q, results } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-4 flex flex-col gap-4">
-          <h1 className="text-xl font-bold text-purple-600">검색</h1>
-          <SearchBar initialQuery={q} />
-        </div>
-      </header>
+    <UserLayout title="검색">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-xl">
+        <SearchBar initialQuery={q} />
+      </div>
 
-      <main className="max-w-md mx-auto px-4 py-6 space-y-4">
+      <div className="space-y-4">
         {q ? (
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm text-gray-500">
-              <span className="font-semibold text-purple-600">{q}</span> 검색 결과 {results.length}개
+            <h2 className="text-sm text-white/90">
+              <span className="font-semibold text-white">{q}</span> 검색 결과 {results.length}개
             </h2>
             {results.length > 0 && (
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-white/70">
                 이름·태그·설명 기준 정렬
               </div>
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">검색어를 입력하세요.</p>
+          <p className="text-sm text-white/70">검색어를 입력하세요.</p>
         )}
 
         {results.length === 0 && q && (
-          <div className="text-center py-8">
+          <div className="text-center py-8 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl">
             <div className="text-gray-400 text-4xl mb-4">🔍</div>
             <p className="text-gray-500 mb-2">검색 결과가 없습니다.</p>
             <p className="text-xs text-gray-400">
@@ -132,7 +129,7 @@ export default function SearchPage() {
         {results.map((place: PlaceSearchResult) => (
           <ResultCard key={place.id} place={place} />
         ))}
-      </main>
-    </div>
+      </div>
+    </UserLayout>
   );
 }
