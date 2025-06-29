@@ -52,64 +52,52 @@ export async function searchPlaces(request: Request, query: string, regionId?: n
     .textSearch('name,description', trimmedQuery, { type: 'websearch' })
     .limit(10);
 
-  // 4. 모든 태그 중에서 부분 매치하는 경우 (가장 낮은 우선순위)
-  const partialTagQuery = supabase
-    .from('places')
-    .select(
-      `*,
-      region:regions(id, name),
-      category:categories(id, name, icon),
-      place_images(image_url, alt_text)`
-    )
-    .eq('is_active', true)
-    .filter('tags', 'cs', `{${trimmedQuery}}`) // contains 연산자 사용
+  // 4. 주소에서 부분 매치하는 경우 (가장 낮은 우선순위)
+  const addressQuery = baseQuery
+    .ilike('address', `%${trimmedQuery}%`)
     .limit(10);
-
-  if (regionId) {
-    partialTagQuery.eq('region_id', regionId);
-  }
 
   try {
     // 모든 쿼리를 병렬로 실행
-    const [exactNameResult, tagResult, textSearchResult, partialTagResult] = await Promise.all([
+    const [exactNameResult, tagResult, textSearchResult, addressResult] = await Promise.all([
       exactNameQuery,
       tagQuery,
       textSearchQuery,
-      partialTagQuery
+      addressQuery
     ]);
 
     // 에러 체크
     if (exactNameResult.error) throw exactNameResult.error;
     if (tagResult.error) throw tagResult.error;
     if (textSearchResult.error) throw textSearchResult.error;
-    if (partialTagResult.error) throw partialTagResult.error;
+    if (addressResult.error) throw addressResult.error;
 
     // 결과 합치기 및 중복 제거
     const allResults = new Map<number, PlaceSearchResult & { score: number }>();
 
     // 1. 이름 정확 매치 (점수: 100)
-    exactNameResult.data?.forEach(place => {
-      allResults.set(place.id, { ...place as PlaceSearchResult, score: 100 });
+    exactNameResult.data?.forEach((place: PlaceSearchResult) => {
+      allResults.set(place.id, { ...place, score: 100 });
     });
 
     // 2. 태그 정확 매치 (점수: 90)
-    tagResult.data?.forEach(place => {
+    tagResult.data?.forEach((place: PlaceSearchResult) => {
       if (!allResults.has(place.id)) {
-        allResults.set(place.id, { ...place as PlaceSearchResult, score: 90 });
+        allResults.set(place.id, { ...place, score: 90 });
       }
     });
 
     // 3. Full Text Search 매치 (점수: 80)
-    textSearchResult.data?.forEach(place => {
+    textSearchResult.data?.forEach((place: PlaceSearchResult) => {
       if (!allResults.has(place.id)) {
-        allResults.set(place.id, { ...place as PlaceSearchResult, score: 80 });
+        allResults.set(place.id, { ...place, score: 80 });
       }
     });
 
-    // 4. 태그 부분 매치 (점수: 70)
-    partialTagResult.data?.forEach(place => {
+    // 4. 주소 부분 매치 (점수: 70)
+    addressResult.data?.forEach((place: PlaceSearchResult) => {
       if (!allResults.has(place.id)) {
-        allResults.set(place.id, { ...place as PlaceSearchResult, score: 70 });
+        allResults.set(place.id, { ...place, score: 70 });
       }
     });
 
