@@ -104,7 +104,7 @@ export default function SearchBar({
   };
 
   const handleInputFocus = () => {
-    if (query.length > 0) {
+    if (query.length > 0 || popularTags.length > 0) {
       setShowSuggestions(true);
     }
   };
@@ -118,54 +118,88 @@ export default function SearchBar({
   const displaySuggestions = showSuggestions && (suggestions.length > 0 || (popularTags.length > 0 && !query));
 
   return (
-    <div className={cn("relative w-full max-w-md", className)}>
+    <div className={cn("relative w-full", className)}>
       <Form
         method="get"
         action="/search"
-        className="flex items-center w-full"
+        className="relative"
       >
-        <input
-          ref={inputRef}
-          type="text"
-          name="q"
-          required
-          placeholder="장소, 태그, 지역을 검색하세요"
-          value={query}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onKeyDown={handleKeyDown}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={isSubmitting || query.trim().length === 0}
-          className="px-4 py-2 bg-purple-600 text-white rounded-r-md hover:bg-purple-700 disabled:opacity-50 transition-colors text-sm"
-        >
-          검색
-        </button>
+        <div className="relative">
+          {/* 검색 아이콘 */}
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg 
+              className="h-5 w-5 text-gray-400" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+              />
+            </svg>
+          </div>
+          
+          <input
+            ref={inputRef}
+            type="text"
+            name="q"
+            required
+            placeholder="장소명, 태그, 지역을 검색하세요"
+            value={query}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onKeyDown={handleKeyDown}
+            className="w-full pl-12 pr-16 py-4 text-gray-900 placeholder-gray-500 bg-white border-0 rounded-2xl shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:shadow-xl transition-all duration-200"
+          />
+          
+          {/* 검색 버튼 */}
+          <button
+            type="submit"
+            disabled={isSubmitting || query.trim().length === 0}
+            className="absolute inset-y-0 right-0 pr-2 flex items-center"
+          >
+            <div className={cn(
+              "px-4 py-2 rounded-xl text-white font-medium transition-all duration-200",
+              query.trim().length === 0 || isSubmitting
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-purple-600 hover:bg-purple-700 hover:shadow-lg transform hover:scale-105"
+            )}>
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "검색"
+              )}
+            </div>
+          </button>
+        </div>
       </Form>
 
       {/* 자동완성 및 인기 태그 */}
       {displaySuggestions && (
         <div
           ref={suggestionRef}
-          className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-80 overflow-y-auto"
+          className="absolute top-full left-0 right-0 mt-2 bg-white border-0 rounded-2xl shadow-2xl z-20 max-h-80 overflow-y-auto"
         >
           {/* 자동완성 결과 */}
           {suggestions.length > 0 && (
             <div className="border-b border-gray-100">
-              <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50">
-                태그 추천
+              <div className="px-4 py-3 text-xs font-semibold text-gray-500 bg-gray-50 rounded-t-2xl">
+                💡 태그 추천
               </div>
               {suggestions.map((suggestion, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => handleSuggestionClick(suggestion.tag)}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 transition-colors"
+                  className="w-full px-4 py-3 text-left hover:bg-purple-50 hover:text-purple-700 flex items-center gap-3 transition-colors group"
                 >
-                  <span className="text-purple-600">#</span>
-                  <span className="text-gray-900">{suggestion.tag}</span>
+                  <div className="w-8 h-8 bg-purple-100 group-hover:bg-purple-200 rounded-full flex items-center justify-center transition-colors">
+                    <span className="text-purple-600 text-sm">#</span>
+                  </div>
+                  <span className="text-gray-900 font-medium">{suggestion.tag}</span>
                 </button>
               ))}
             </div>
@@ -174,21 +208,23 @@ export default function SearchBar({
           {/* 인기 태그 */}
           {popularTags.length > 0 && !query && (
             <div>
-              <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50">
-                인기 태그
+              <div className="px-4 py-3 text-xs font-semibold text-gray-500 bg-gray-50">
+                🔥 인기 태그
               </div>
-              <div className="p-3">
+              <div className="p-4">
                 <div className="flex flex-wrap gap-2">
                   {popularTags.slice(0, 12).map((tag, index) => (
                     <button
                       key={index}
                       type="button"
                       onClick={() => handleSuggestionClick(tag.tag)}
-                      className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+                      className="group px-3 py-2 bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 text-purple-700 rounded-full transition-all duration-200 hover:shadow-md transform hover:scale-105"
                     >
-                      #{tag.tag}
+                      <span className="text-sm font-medium">#{tag.tag}</span>
                       {tag.count && (
-                        <span className="ml-1 text-purple-500">({tag.count})</span>
+                        <span className="ml-1 text-xs text-purple-500 group-hover:text-purple-600">
+                          ({tag.count})
+                        </span>
                       )}
                     </button>
                   ))}
