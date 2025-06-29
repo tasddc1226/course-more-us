@@ -7,9 +7,9 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS idx_places_tags_gin 
 ON places USING GIN (tags);
 
--- 2. Full Text Search 성능 향상을 위한 인덱스 (한국어 지원)
+-- 2. Full Text Search 성능 향상을 위한 인덱스 (언어 무관)
 CREATE INDEX IF NOT EXISTS idx_places_fts 
-ON places USING GIN (to_tsvector('korean', coalesce(name, '') || ' ' || coalesce(description, '')));
+ON places USING GIN (to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, '')));
 
 -- 3. 태그 개별 요소 검색을 위한 인덱스 (부분 문자열 검색)
 CREATE INDEX IF NOT EXISTS idx_places_tags_elements 
