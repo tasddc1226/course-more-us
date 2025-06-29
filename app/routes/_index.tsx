@@ -861,24 +861,53 @@ export default function Index() {
             </Link>
           </div>
         </div>
-        {/* 검색 바 */}
-        <div className="max-w-md mx-auto px-4 pb-4">
-          <SearchBar />
-        </div>
       </header>
       
       <main className="max-w-md mx-auto px-4 py-6">
-        <div className="text-center mb-6">
+        <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-3">
             오늘은 어떤 데이트를 해볼까요?
           </h2>
           <p className="text-gray-600 text-sm">
-            지역과 시간을 선택하면 맞춤 데이트 코스를 추천해드려요
+            원하는 방법을 선택해서 완벽한 데이트를 계획해보세요
           </p>
         </div>
 
-        {/* 추천 요청 폼 */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        {/* 장소 검색 영역 */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-xl">🔍</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-blue-800">장소 검색</h3>
+              <p className="text-sm text-blue-600">원하는 장소를 바로 찾아보세요</p>
+            </div>
+          </div>
+          <SearchBar />
+          <p className="text-xs text-blue-500 mt-3">
+            💡 태그, 지역명, 장소명으로 검색할 수 있어요
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <span className="text-sm text-gray-500 font-medium">또는</span>
+          <div className="flex-1 h-px bg-gray-200"></div>
+        </div>
+
+        {/* 맞춤 추천 영역 */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-xl">✨</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-purple-800">맞춤 데이트 코스 추천</h3>
+              <p className="text-sm text-purple-600">AI가 선별한 완벽한 데이트 코스를 받아보세요</p>
+            </div>
+          </div>
+          
           <Form method="post" className="space-y-6">
             {actionData?.error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -947,7 +976,7 @@ export default function Index() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -961,6 +990,10 @@ export default function Index() {
               )}
             </Button>
           </Form>
+          
+          <p className="text-xs text-purple-500 mt-4">
+            🎯 선택하신 조건에 맞는 최적의 데이트 코스를 AI가 추천해드려요
+          </p>
         </div>
 
         {/* 추천 결과 */}

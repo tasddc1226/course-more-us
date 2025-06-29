@@ -33,13 +33,13 @@ export default function SearchBar({
   
   const isSubmitting = navigation.state === "submitting";
 
-  // 인기 태그 로드 (한 번만)
-  useEffect(() => {
+  // 인기 태그 지연 로드 함수
+  const loadPopularTags = () => {
     if (showPopularTags && !hasLoadedPopularTags) {
       fetcher.load('/api/tags/popular');
       setHasLoadedPopularTags(true);
     }
-  }, [showPopularTags, hasLoadedPopularTags]); // fetcher 제거하여 무한 루프 방지
+  };
 
   // 인기 태그 데이터 업데이트
   useEffect(() => {
@@ -47,8 +47,12 @@ export default function SearchBar({
     const data = fetcher.data as any;
     if (data && data.popularTags) {
       setPopularTags(data.popularTags);
+      // 검색창이 포커스되어 있고 검색어가 없으면 인기 태그 표시
+      if (document.activeElement === inputRef.current && !query) {
+        setShowSuggestions(true);
+      }
     }
-  }, [fetcher.data]);
+  }, [fetcher.data, query]);
 
   // 태그 자동완성 요청 (디바운스 적용)
   useEffect(() => {
@@ -104,7 +108,11 @@ export default function SearchBar({
   };
 
   const handleInputFocus = () => {
-    if (query.length > 0 || popularTags.length > 0) {
+    // 인기 태그 지연 로딩 - 사용자가 검색창에 포커스했을 때만 로드
+    loadPopularTags();
+    
+    // 검색어가 있거나 이미 인기 태그가 로드되어 있으면 자동완성 표시
+    if (query.length > 0 || popularTags.length > 0 || hasLoadedPopularTags) {
       setShowSuggestions(true);
     }
   };
