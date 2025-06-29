@@ -136,9 +136,9 @@ function Calendar({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'w-full px-3 py-2 text-left border border-gray-300 rounded-md',
+          'w-full px-4 py-3 text-left border border-gray-300 rounded-xl shadow-sm',
           'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500',
-          'bg-white hover:bg-gray-50 transition-colors',
+          'bg-white hover:bg-gray-50 hover:shadow-md transition-all duration-200',
           selectedDate ? 'text-gray-900' : 'text-gray-500'
         )}
       >
