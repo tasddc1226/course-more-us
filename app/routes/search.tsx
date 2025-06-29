@@ -160,7 +160,7 @@ export default function SearchPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-bold text-white mb-1">
-              &quot;{q}&quot; 검색 결과
+              {q} 검색 결과
             </h2>
             <p className="text-sm text-white/70">
               총 {results.length}개의 장소를 찾았습니다
@@ -186,7 +186,7 @@ export default function SearchPage() {
           <div className="text-gray-300 text-6xl mb-4">🔍</div>
           <h3 className="text-xl font-bold text-gray-700 mb-2">검색 결과가 없습니다</h3>
           <p className="text-gray-500 mb-4">
-            &quot;{q}&quot;에 대한 검색 결과를 찾을 수 없습니다
+            {q}에 대한 검색 결과를 찾을 수 없습니다
           </p>
           <div className="text-sm text-gray-400 space-y-1">
             <p>• 다른 키워드로 검색해보세요</p>

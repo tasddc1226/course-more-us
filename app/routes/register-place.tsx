@@ -3,7 +3,7 @@ import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-
 import { useState } from 'react'
 import { getCategories, getTimeSlots } from '~/lib/data.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
-import { Button } from '~/components/ui'
+import { Button, Dropdown, type DropdownOption } from '~/components/ui'
 import { ClientOnlyKakaoMap, PageHeader } from '~/components/common'
 import { ImageUpload, StarRating } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
@@ -159,6 +159,19 @@ export default function RegisterPlace() {
   // 운영시간 UI용 상태
   const [selectedPeriod, setSelectedPeriod] = useState<'weekday' | 'weekend'>('weekday')
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<number | null>(null)
+  
+  // 카테고리 선택 상태
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number | null>(
+    actionData?.values?.category_id ? String(actionData.values.category_id) : null
+  )
+
+  // 카테고리 옵션 변환
+  const categoryOptions: DropdownOption[] = categories.map(category => ({
+    value: String(category.id),
+    label: category.name,
+    icon: category.icon || '',
+    description: category.description || undefined
+  }))
 
   const selectTimeSlot = (timeSlotId: number) => {
     setSelectedTimeSlot(selectedTimeSlot === timeSlotId ? null : timeSlotId)
@@ -253,23 +266,22 @@ export default function RegisterPlace() {
 
             {/* 카테고리 */}
             <div>
-              <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 mb-2">
-                카테고리 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="category_id"
-                name="category_id"
+              <Dropdown
+                options={categoryOptions}
+                selectedValue={selectedCategoryId}
+                onSelect={setSelectedCategoryId}
+                label="카테고리"
+                placeholder="카테고리를 선택하세요"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                defaultValue={actionData?.values?.category_id as string}
-              >
-                <option value="">카테고리 선택</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.icon} {category.name}
-                  </option>
-                ))}
-              </select>
+                searchable
+                variant="default"
+              />
+              {/* Form 전송용 hidden input */}
+              <input
+                type="hidden"
+                name="category_id"
+                value={selectedCategoryId || ''}
+              />
             </div>
 
             {/* 별점 */}

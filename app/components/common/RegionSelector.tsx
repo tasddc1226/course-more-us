@@ -220,7 +220,7 @@ export function RegionSelector({
                 ) : !loading && query ? (
                   <div className="p-4 text-center text-gray-500">
                     <div className="text-4xl mb-2">🔍</div>
-                                         <div>&quot;{query}&quot;에 대한 지역을 찾을 수 없습니다</div>
+                                         <div>{query}에 대한 지역을 찾을 수 없습니다</div>
                     <div className="text-sm mt-1">다른 검색어를 시도해보세요</div>
                   </div>
                 ) : null}

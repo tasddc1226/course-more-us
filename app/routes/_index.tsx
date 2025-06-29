@@ -8,7 +8,7 @@ import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 import { getUserFavoritesForPlaces, toggleFavorite } from "~/lib/favorites.server";
 
-import { Button, Calendar, triggerCelebration } from "~/components/ui";
+import { Button, Calendar, triggerCelebration, Dropdown, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
@@ -797,6 +797,16 @@ export default function Index() {
   const navigation = useNavigation();
   
   const isLoading = navigation.state === 'submitting';
+  
+  // 지역 선택 상태 관리
+  const [selectedRegionId, setSelectedRegionId] = useState<string | number | null>(null);
+  
+  // 지역 옵션 변환
+  const regionOptions: DropdownOption[] = regions.map(region => ({
+    value: String(region.id),
+    label: region.name,
+    description: region.description || undefined
+  }));
 
   if (!user) {
     return (
@@ -917,22 +927,22 @@ export default function Index() {
 
             {/* 지역 선택 */}
             <div>
-              <label htmlFor="regionId" className="block text-sm font-medium text-gray-700 mb-2">
-                지역 선택 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="regionId"
-                name="regionId"
+              <Dropdown
+                options={regionOptions}
+                selectedValue={selectedRegionId}
+                onSelect={setSelectedRegionId}
+                label="지역 선택"
+                placeholder="지역을 선택해주세요"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              >
-                <option value="">지역을 선택해주세요</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
+                searchable
+                variant="default"
+              />
+              {/* Form 전송용 hidden input */}
+              <input
+                type="hidden"
+                name="regionId"
+                value={selectedRegionId || ''}
+              />
             </div>
 
             {/* 날짜 선택 */}
