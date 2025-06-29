@@ -12,7 +12,7 @@ import { Button, Calendar, triggerCelebration } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // 추천 결과 UI를 위한 타입 정의
 type TimeSlot = Tables<'time_slots'>;
@@ -286,6 +286,7 @@ function PlaceCard({
   isFavorite?: boolean;
 }) {
   const fetcher = useFetcher();
+  const prevFavoriteRef = useRef<boolean>(isFavorite);
 
   // 초기 피드백/즐겨찾기 상태 계산
   const initialFeedbackState = {
@@ -319,6 +320,9 @@ function PlaceCard({
         if (result.placeId === place.id) {
           setFavorite(result.isFavorite);
         }
+      } else if ('error' in fetcher.data && fetcher.data.error) {
+        // 서버 오류 시 롤백
+        setFavorite(prevFavoriteRef.current);
       }
 
       if ('feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
@@ -373,6 +377,9 @@ function PlaceCard({
             {/* 즐겨찾기 버튼 */}
             <button
               onClick={() => {
+                // Optimistic UI: 즉시 토글
+                prevFavoriteRef.current = favorite;
+                setFavorite(!favorite);
                 fetcher.submit(
                   {
                     intent: 'favorite',
