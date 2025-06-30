@@ -36,7 +36,7 @@ fi
 
 # 2. 새로운 마이그레이션 적용
 echo "📤 Applying complete schema reset migration..."
-npx supabase db push
+npx supabase db push --include-all
 
 echo "✅ Schema reset and setup completed!"
 

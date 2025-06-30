@@ -42,7 +42,8 @@ DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS time_slots CASCADE;
 DROP TABLE IF EXISTS regions CASCADE;
 
--- Storage 버킷 삭제
+-- Storage 객체 및 버킷 삭제
+DELETE FROM storage.objects WHERE bucket_id = 'place-images';
 DELETE FROM storage.buckets WHERE id = 'place-images';
 
 -- ============================================================================
