@@ -185,10 +185,30 @@ export default function SearchPage() {
         <div className="text-center py-12 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl">
           <div className="text-gray-300 text-6xl mb-4">🔍</div>
           <h3 className="text-xl font-bold text-gray-700 mb-2">검색 결과가 없습니다</h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-500 mb-6">
             {q}에 대한 검색 결과를 찾을 수 없습니다
           </p>
+          
+          {/* 새 장소 등록 유도 */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
+            <h4 className="text-lg font-bold text-purple-700 mb-2">
+              ✨ 새로운 장소를 공유해주세요!
+            </h4>
+                         <p className="text-gray-600 mb-4">
+               <span className="font-semibold text-purple-600">&ldquo;{q}&rdquo;</span>에 대한 정보가 없네요.<br />
+               직접 가보셨다면 다른 분들을 위해 정보를 공유해주세요!
+             </p>
+            <Link
+              to={`${ROUTES.REGISTER_PLACE}?name=${encodeURIComponent(q)}`}
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <span className="mr-2">📍</span>
+              새 장소 등록하기
+            </Link>
+          </div>
+
           <div className="text-sm text-gray-400 space-y-1">
+            <p>또는 다른 방법으로 검색해보세요:</p>
             <p>• 다른 키워드로 검색해보세요</p>
             <p>• 태그나 지역명을 시도해보세요</p>
             <p>• 검색어를 줄여보세요</p>

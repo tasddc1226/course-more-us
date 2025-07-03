@@ -21,6 +21,9 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAuth(request)
   
+  const url = new URL(request.url)
+  const prefilledName = url.searchParams.get('name') || ''
+  
   const [categories, todayCount, timeSlots] = await Promise.all([
     getCategories(request),
     getTodayPlaceCount(request),
@@ -30,7 +33,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({ 
     categories: categories as Tables<'categories'>[], 
     todayCount, 
-    timeSlots: timeSlots as Tables<'time_slots'>[] 
+    timeSlots: timeSlots as Tables<'time_slots'>[],
+    prefilledName
   })
 }
 
@@ -140,7 +144,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RegisterPlace() {
-  const { categories, todayCount, timeSlots } = useLoaderData<typeof loader>()
+  const { categories, todayCount, timeSlots, prefilledName } = useLoaderData<typeof loader>()
   const actionData = useActionData<typeof action>()
   const navigation = useNavigation()
   const isSubmitting = navigation.state === 'submitting'
@@ -235,10 +239,28 @@ export default function RegisterPlace() {
                 위치 선택 <span className="text-red-500">*</span>
               </div>
               
+              {/* 검색어로부터 온 경우 안내 메시지 */}
+              {prefilledName && (
+                <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-purple-600">💡</span>
+                    <div>
+                                             <p className="text-sm font-medium text-purple-800">
+                         <span className="font-semibold">&ldquo;{prefilledName}&rdquo;</span> 장소를 등록하시나요?
+                       </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        아래 지도에서 해당 장소를 검색하여 정확한 위치를 선택해주세요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <ClientOnlyKakaoMap
                 onLocationSelect={setSelectedLocation}
                 height="400px"
                 className="mb-4"
+                initialSearchKeyword={prefilledName}
               />
               
               {/* 선택된 위치 정보를 hidden input으로 전송 */}

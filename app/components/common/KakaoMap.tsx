@@ -8,20 +8,22 @@ interface KakaoMapComponentProps {
   initialLocation?: PlaceLocationData
   height?: string
   className?: string
+  initialSearchKeyword?: string
 }
 
 export default function KakaoMapComponent({
   onLocationSelect,
   initialLocation,
   height = '400px',
-  className = ''
+  className = '',
+  initialSearchKeyword = ''
 }: KakaoMapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<KakaoMap | null>(null)
   const [marker, setMarker] = useState<KakaoMarker | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchKeyword, setSearchKeyword] = useState('')
+  const [searchKeyword, setSearchKeyword] = useState(initialSearchKeyword)
   const [searchResults, setSearchResults] = useState<PlaceLocationData[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<PlaceLocationData | null>(initialLocation || null)
