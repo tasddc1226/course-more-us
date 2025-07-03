@@ -745,13 +745,23 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   // 추천 요청 처리
-  const regionId = parseInt(formData.get('regionId') as string);
+  const regionIdValue = formData.get('regionId')
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
 
-  if (!regionId || !date || timeSlotIds.length === 0) {
+  if (!regionIdValue || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
+      recommendations: null,
+      userFeedbacks: null,
+      userFavorites: null
+    }, { status: 400 });
+  }
+
+  const regionId = parseInt(regionIdValue as string)
+  if (isNaN(regionId)) {
+    return json({ 
+      error: '유효하지 않은 지역입니다.',
       recommendations: null,
       userFeedbacks: null,
       userFavorites: null
@@ -938,11 +948,13 @@ export default function Index() {
                 variant="default"
               />
               {/* Form 전송용 hidden input */}
-              <input
-                type="hidden"
-                name="regionId"
-                value={selectedRegionId || ''}
-              />
+              {selectedRegionId && (
+                <input
+                  type="hidden"
+                  name="regionId"
+                  value={selectedRegionId}
+                />
+              )}
             </div>
 
             {/* 날짜 선택 */}

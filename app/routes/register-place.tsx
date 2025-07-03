@@ -137,6 +137,23 @@ export async function action({ request }: ActionFunctionArgs) {
     const selectedTimeSlot = formData.get('selectedTimeSlot') ? parseInt(formData.get('selectedTimeSlot') as string) : undefined
     const selectedPeriod = formData.get('selectedPeriod') as 'weekday' | 'weekend' | undefined
 
+    // 필수 필드 검증
+    const categoryIdValue = formData.get('category_id')
+    if (!categoryIdValue) {
+      return json({ 
+        error: '카테고리를 선택해주세요.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    const categoryId = parseInt(categoryIdValue as string)
+    if (isNaN(categoryId)) {
+      return json({ 
+        error: '유효하지 않은 카테고리입니다.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
     // 장소 데이터 구성
     const placeData = {
       placeName,
@@ -144,7 +161,7 @@ export async function action({ request }: ActionFunctionArgs) {
       address,
       latitude,
       longitude,
-      category_id: parseInt(formData.get('category_id') as string),
+      category_id: categoryId,
       description: formData.get('description') as string,
       rating,
       tags,
@@ -351,11 +368,13 @@ export default function RegisterPlace() {
                 variant="default"
               />
               {/* Form 전송용 hidden input */}
-              <input
-                type="hidden"
-                name="category_id"
-                value={selectedCategoryId || ''}
-              />
+              {selectedCategoryId && (
+                <input
+                  type="hidden"
+                  name="category_id"
+                  value={selectedCategoryId}
+                />
+              )}
             </div>
 
             {/* 별점 */}
@@ -445,7 +464,9 @@ export default function RegisterPlace() {
               </div>
 
               {/* 선택된 정보를 hidden input으로 전송 */}
-              <input type="hidden" name="selectedTimeSlot" value={selectedTimeSlot || ''} />
+              {selectedTimeSlot && (
+                <input type="hidden" name="selectedTimeSlot" value={selectedTimeSlot} />
+              )}
               <input type="hidden" name="selectedPeriod" value={selectedPeriod} />
             </div>
 

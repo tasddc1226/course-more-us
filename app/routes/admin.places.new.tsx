@@ -42,6 +42,41 @@ export async function action({ request }: ActionFunctionArgs) {
       sunday: formData.get('hours_sunday') as string || '',
     };
 
+    // 필수 필드 검증
+    const categoryIdValue = formData.get('category_id')
+    const regionIdValue = formData.get('region_id')
+    
+    if (!categoryIdValue) {
+      return json({ 
+        error: '카테고리를 선택해주세요.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    if (!regionIdValue) {
+      return json({ 
+        error: '지역을 선택해주세요.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    const categoryId = parseInt(categoryIdValue as string)
+    const regionId = parseInt(regionIdValue as string)
+    
+    if (isNaN(categoryId)) {
+      return json({ 
+        error: '유효하지 않은 카테고리입니다.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    if (isNaN(regionId)) {
+      return json({ 
+        error: '유효하지 않은 지역입니다.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
     // 기본 장소 정보
     const placeData = {
       name: formData.get('name') as string,
@@ -54,8 +89,8 @@ export async function action({ request }: ActionFunctionArgs) {
       rating: parseFloat(formData.get('rating') as string) || 0,
       price_range: parseInt(formData.get('price_range') as string) || 1,
       is_partnership: formData.get('is_partnership') === 'on',
-      region_id: parseInt(formData.get('region_id') as string),
-      category_id: parseInt(formData.get('category_id') as string),
+      region_id: regionId,
+      category_id: categoryId,
       is_active: formData.get('is_active') === 'on',
       tags,
       operating_hours: operatingHours
@@ -163,11 +198,13 @@ export default function NewPlace() {
                   searchable
                   variant="default"
                 />
-                <input
-                  type="hidden"
-                  name="category_id"
-                  value={selectedCategoryId || ''}
-                />
+                {selectedCategoryId && (
+                  <input
+                    type="hidden"
+                    name="category_id"
+                    value={selectedCategoryId}
+                  />
+                )}
               </div>
 
               <div>
@@ -181,11 +218,13 @@ export default function NewPlace() {
                   searchable
                   variant="default"
                 />
-                <input
-                  type="hidden"
-                  name="region_id"
-                  value={selectedRegionId || ''}
-                />
+                {selectedRegionId && (
+                  <input
+                    type="hidden"
+                    name="region_id"
+                    value={selectedRegionId}
+                  />
+                )}
               </div>
 
               <div>
