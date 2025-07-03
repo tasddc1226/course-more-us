@@ -54,7 +54,27 @@
 
 ---
 
-### 다음 할 일
-1. 탈퇴 사유 통계 대시보드 연결
-2. 이메일 찾기 로직을 관리자 문의로 전환하거나 서버 함수화(개인정보 보호)
-3. Cypress E2E 테스트 추가 (패스워드 재설정, 회원탈퇴 시나리오)
+## 세부 작업 계획 (다음 단계)
+
+### 1) 탈퇴 사유 통계 대시보드 연결
+1. DB: `user_feedback` → `title = 'account_deletion'` 레코드 집계 (reason 별 count)
+2. `app/lib/admin.server.ts` – `getAccountDeletionStats()` 함수 추가 (service key)
+3. `app/routes/admin._index.tsx` loader 확장 → stats 반환
+4. UI: 관리자 대시보드에 카드/테이블 표시 (reason + 개수)
+5. 차트 라이브러리(Optional): `@nivo/line` or simple bar with Tailwind
+
+### 2) 이메일 찾기 로직 서버 사이드 전환
+1. API 라우트 `app/routes/api.account.find-email.tsx` 생성
+   * POST `{ nickname }` → 서버에서 supabaseAdmin로 매칭 후 masked email 반환 (ex: a***b@domain.com)
+2. 클라이언트: `auth.forgot-password.tsx` 에서 닉네임 제출 시 fetch API 호출
+3. 실패 시 공통 에러 처리(`ErrorMessage`)
+4. RLS 보호 → 서버 키 사용, 응답은 마스킹된 이메일만
+
+### 3) Cypress E2E 테스트
+1. `devDependencies` – `cypress` 설치, `package.json` 스크립트(`cy:open`, `cy:run`)
+2. 기본 설정: `cypress.config.ts` 추가 (baseUrl = `http://localhost:3000`)
+3. 테스트: `cypress/e2e/password-reset.cy.ts`
+   * 사용자 Signup → ForgotPassword → intercept reset link → Reset Password
+4. 테스트: `cypress/e2e/account-delete.cy.ts`
+   * 로그인 → /my-info → 탈퇴 플로우 → expect redirect to /, account removed
+5. CI 연동 (GitHub Actions): `cypress-io/github-action`
