@@ -1,4 +1,4 @@
-import { Form, useNavigation, useFetcher } from "@remix-run/react";
+import { Form, useNavigation, useFetcher, useSubmit } from "@remix-run/react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "~/utils/cn";
 
@@ -28,6 +28,7 @@ export default function SearchBar({
   
   const navigation = useNavigation();
   const fetcher = useFetcher();
+  const submit = useSubmit();
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionRef = useRef<HTMLDivElement>(null);
   
@@ -65,7 +66,7 @@ export default function SearchBar({
             setSuggestions(data.suggestions.map((tag: string) => ({ tag })));
           }
         } catch (error) {
-          console.error('Error fetching tag suggestions:', error);
+          // 태그 자동완성 요청 실패 시 조용히 처리
         }
       }, 300);
       
@@ -100,11 +101,8 @@ export default function SearchBar({
   const handleSuggestionClick = (tag: string) => {
     setQuery(tag);
     setShowSuggestions(false);
-    // 자동으로 검색 실행
-    const form = inputRef.current?.closest('form');
-    if (form) {
-      setTimeout(() => form.requestSubmit(), 100);
-    }
+    // 자동으로 검색 실행 - useSubmit을 사용하여 안전하게 처리
+    submit({ q: tag }, { method: "get", action: "/search" });
   };
 
   const handleInputFocus = () => {
