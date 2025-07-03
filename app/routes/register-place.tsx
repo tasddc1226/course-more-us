@@ -1,5 +1,5 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@remix-run/node'
-import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-run/react'
+import { useLoaderData, useActionData, Link, useNavigation, useFetcher } from '@remix-run/react'
 import { useState } from 'react'
 import { getCategories, getTimeSlots } from '~/lib/data.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
@@ -44,8 +44,19 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData()
 
   try {
+    console.log('=== 장소 등록 시작 ===')
+    console.log('FormData 내용:')
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: File(${value.name}, ${value.size} bytes)`)
+      } else {
+        console.log(`${key}: ${value}`)
+      }
+    }
+
     // 일일 제한 체크
     const todayCount = await getTodayPlaceCount(request)
+    console.log('오늘 등록 수:', todayCount)
     if (todayCount >= 3) {
       return json({ 
         error: '하루 최대 3개까지만 장소를 등록할 수 있습니다.',
@@ -59,7 +70,10 @@ export async function action({ request }: ActionFunctionArgs) {
     const latitude = parseFloat(formData.get('latitude') as string)
     const longitude = parseFloat(formData.get('longitude') as string)
 
+    console.log('위치 정보:', { placeName, address, latitude, longitude })
+
     if (!placeName || !address || !latitude || !longitude) {
+      console.log('위치 정보 누락!')
       return json({ 
         error: '지도에서 위치를 선택해주세요.',
         values: Object.fromEntries(formData)
@@ -77,10 +91,14 @@ export async function action({ request }: ActionFunctionArgs) {
     const images: string[] = []
     const imageFiles = formData.getAll('images') as File[]
     
+    console.log('총 이미지 파일 수:', imageFiles.length)
+    
     // 압축된 이미지가 있는지 확인
     const validImageFiles = imageFiles.filter(file => file && file.size > 0)
+    console.log('유효한 이미지 파일 수:', validImageFiles.length)
     
     if (validImageFiles.length === 0) {
+      console.log('이미지 파일 없음!')
       return json({ 
         error: '최소 1장의 이미지를 업로드해야 합니다.',
         values: Object.fromEntries(formData)
@@ -90,9 +108,12 @@ export async function action({ request }: ActionFunctionArgs) {
     // 압축된 이미지들을 업로드
     for (const file of validImageFiles) {
       try {
+        console.log(`이미지 업로드 시작: ${file.name} (${file.size} bytes)`)
         const imageUrl = await uploadPlaceImage(request, file)
+        console.log(`이미지 업로드 성공: ${imageUrl}`)
         images.push(imageUrl)
       } catch (uploadError) {
+        console.error('이미지 업로드 실패:', uploadError)
         // 이미지 업로드 오류 처리
         return json({ 
           error: '이미지 업로드 중 오류가 발생했습니다.',
@@ -100,6 +121,8 @@ export async function action({ request }: ActionFunctionArgs) {
         }, { status: 400 })
       }
     }
+
+    console.log('업로드된 이미지 URLs:', images)
 
     // 별점 처리
     const rating = parseFloat(formData.get('rating') as string)
@@ -130,11 +153,20 @@ export async function action({ request }: ActionFunctionArgs) {
       selectedPeriod
     }
 
+    console.log('장소 데이터:', placeData)
+
     // 장소 생성
+    console.log('createUserPlaceFromLocation 호출 시작')
     await createUserPlaceFromLocation(request, placeData)
+    console.log('장소 생성 완료!')
 
     return redirect(ROUTES.MY_PLACES)
   } catch (error) {
+    console.error('=== 장소 등록 에러 ===')
+    console.error('Error object:', error)
+    console.error('Error message:', error instanceof Error ? error.message : error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack')
+    
     // 장소 생성 오류 처리
     return json({ 
       error: error instanceof Error ? error.message : '장소 등록 중 오류가 발생했습니다.',
@@ -147,7 +179,8 @@ export default function RegisterPlace() {
   const { categories, todayCount, timeSlots, prefilledName } = useLoaderData<typeof loader>()
   const actionData = useActionData<typeof action>()
   const navigation = useNavigation()
-  const isSubmitting = navigation.state === 'submitting'
+  const fetcher = useFetcher()
+  const isSubmitting = navigation.state === 'submitting' || fetcher.state === 'submitting'
   
   // 지도에서 선택된 위치 정보
   const [selectedLocation, setSelectedLocation] = useState<PlaceLocationData | null>(null)
@@ -206,6 +239,25 @@ export default function RegisterPlace() {
     )
   }
 
+  // 커스텀 Form 제출 핸들러
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    
+    // 압축된 이미지들을 FormData에 추가
+    compressedImages.forEach((file, index) => {
+      formData.append('images', file, `compressed-image-${index}.jpg`)
+    })
+    
+    // Remix fetcher로 제출
+    fetcher.submit(formData, {
+      method: 'POST',
+      encType: 'multipart/form-data'
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
       <PageHeader 
@@ -226,10 +278,10 @@ export default function RegisterPlace() {
             </p>
           </div>
           
-          <Form method="post" encType="multipart/form-data" className="p-6 space-y-6">
-            {actionData?.error && (
+          <form onSubmit={handleSubmit} encType="multipart/form-data" className="p-6 space-y-6">
+            {(actionData?.error || (fetcher.data as { error?: string })?.error) && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {actionData.error}
+                {actionData?.error || (fetcher.data as { error?: string })?.error}
               </div>
             )}
 
@@ -454,7 +506,7 @@ export default function RegisterPlace() {
                 {isSubmitting ? '등록 중...' : '장소 등록'}
               </Button>
             </div>
-          </Form>
+          </form>
         </div>
       </main>
     </div>
