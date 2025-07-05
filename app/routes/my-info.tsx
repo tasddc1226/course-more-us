@@ -1,13 +1,15 @@
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node'
-import { json } from '@remix-run/node'
+import { json, redirect } from '@remix-run/node'
 import { useLoaderData, Form, useActionData, useSubmit, useFetcher } from '@remix-run/react'
 import { requireAuth } from '~/lib/auth.server'
 import { getUserProfile, updateUserProfile, isNicknameAvailable } from '~/lib/profile.server'
-import { Button, Input } from '~/components/ui'
+import { Button, Input, Modal, ErrorMessage } from '~/components/ui'
 import { UserLayout } from '~/components/common'
 import { ROUTES } from '~/constants/routes'
 import { formatDate } from '~/utils/date'
 import { useState, useEffect } from 'react'
+import { createSupabaseServerClient } from '~/lib/supabase.server'
+import { deleteUserAndData } from '~/lib/delete-account.server'
 
 export const meta: MetaFunction = () => {
   return [
@@ -52,6 +54,27 @@ export async function action({ request }: ActionFunctionArgs) {
           nickname: nickname.trim()
         })
       }
+      case 'deleteAccount': {
+        const reason = formData.get('reason') as string
+        if (!reason || reason.trim().length === 0 || reason.trim().length > 10) {
+          return json({ error: '탈퇴 사유를 1~10자로 입력해주세요.' }, { status: 400 })
+        }
+        const { user } = await requireAuth(request)
+
+        // 세션 쿠키 삭제를 위해 response 객체 전달
+        const response = new Response()
+        const supabase = createSupabaseServerClient(request, response)
+        // 먼저 로그아웃 처리
+        await supabase.auth.signOut()
+
+        // 사용자 및 관련 데이터 삭제
+        await deleteUserAndData(user.id, reason.trim())
+
+        // 홈으로 리다이렉트
+        return redirect('/', {
+          headers: response.headers,
+        })
+      }
       default:
         return json({ error: '잘못된 액션입니다.' }, { status: 400 })
     }
@@ -68,6 +91,11 @@ export default function MyInfo() {
   const actionData = useActionData<typeof action>()
   const submit = useSubmit()
   const nicknameFetcher = useFetcher<typeof action>()
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showReasonModal, setShowReasonModal] = useState(false)
+  const [deleteReason, setDeleteReason] = useState('')
+  // 탈퇴 처리 진행 상태
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const [nickname, setNickname] = useState(profile?.nickname || '')
   const [isEditing, setIsEditing] = useState(false)
@@ -142,6 +170,22 @@ export default function MyInfo() {
   const handleEditStart = () => {
     setIsEditing(true)
     setNicknameStatus({})
+  }
+
+  const openDeleteFlow = () => setShowConfirmModal(true)
+
+  const handleConfirmNext = () => {
+    setShowConfirmModal(false)
+    setShowReasonModal(true)
+  }
+
+  const handleDeleteSubmit = () => {
+    if (!deleteReason.trim() || deleteReason.trim().length > 10) return
+    setIsDeleting(true)
+    const formData = new FormData()
+    formData.append('action', 'deleteAccount')
+    formData.append('reason', deleteReason.trim())
+    submit(formData, { method: 'post' })
   }
 
   return (
@@ -320,6 +364,60 @@ export default function MyInfo() {
             </button>
           </Form>
         </div>
+
+        {/* 회원탈퇴 버튼 */}
+        <div className="bg-white rounded-lg shadow-sm mt-4">
+          <button
+            type="button"
+            onClick={openDeleteFlow}
+            className="w-full px-6 py-4 text-left text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            회원탈퇴
+          </button>
+        </div>
+
+        {/* 1차 확인 모달 */}
+        <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title="회원탈퇴">
+          <p className="text-gray-700 mb-6">정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
+              취소
+            </Button>
+            <Button variant="danger" onClick={handleConfirmNext}>
+              다음
+            </Button>
+          </div>
+        </Modal>
+
+        {/* 탈퇴 사유 입력 모달 */}
+        <Modal isOpen={showReasonModal} onClose={() => setShowReasonModal(false)} title="탈퇴 사유 (10자 이내)">
+          {/* 에러 메시지 */}
+          {actionData && 'error' in actionData && actionData.error && (
+            <ErrorMessage message={actionData.error as string} />
+          )}
+          <Input
+            type="text"
+            value={deleteReason}
+            onChange={(e) => {
+              if (e.target.value.length <= 10) {
+                setDeleteReason(e.target.value)
+              }
+            }}
+            placeholder="사유 입력"
+            className="w-full mb-4"
+          />
+          <div className="flex justify-between items-center mb-4 text-xs text-gray-400">
+            <span>{deleteReason.length}/10</span>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowReasonModal(false)} disabled={isDeleting}>
+              취소
+            </Button>
+            <Button variant="danger" onClick={handleDeleteSubmit} isLoading={isDeleting} disabled={!deleteReason.trim()}>
+              탈퇴하기
+            </Button>
+          </div>
+        </Modal>
     </UserLayout>
   )
 } 

@@ -115,7 +115,7 @@ export default function Login() {
 
       {/* 이메일/비밀번호 찾기 및 회원가입 링크 */}
       <div className="flex justify-between items-center mt-6 text-sm">
-        <Link to="/auth/forgot-password" className="text-gray-600 hover:text-gray-800">
+        <Link to={ROUTES.FORGOT_PASSWORD} className="text-gray-600 hover:text-gray-800">
           이메일 / 비밀번호 찾기
         </Link>
         <Link to={ROUTES.SIGNUP} className="text-gray-600 hover:text-gray-800">
