@@ -1,5 +1,5 @@
 import { json, redirect, type ActionFunctionArgs } from '@remix-run/node'
-import { Form, useActionData, Link } from '@remix-run/react'
+import { Form, useActionData, Link, useNavigate } from '@remix-run/react'
 import { useState, useEffect } from 'react'
 import { Button, Input, ErrorMessage } from '~/components/ui'
 import { AuthLayout } from '~/components/common'
@@ -53,14 +53,15 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: error.message }, { status: 400 })
   }
 
-  // 성공 시 로그인 페이지로 리다이렉트
-  return redirect(`${ROUTES.LOGIN}?message=password_reset_success`, {
+  // 성공 시 클라이언트에게 성공 상태 반환
+  return json({ success: true }, {
     headers: response.headers
   })
 }
 
 export default function ResetPasswordPage() {
   const actionData = useActionData<typeof action>()
+  const navigate = useNavigate()
   
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -88,7 +89,7 @@ export default function ResetPasswordPage() {
     }
   }, [])
 
-  // 성공 메시지 카운트다운 (실제로는 리다이렉트되지만 혹시를 위해)
+  // 성공 메시지 카운트다운 및 리다이렉트
   useEffect(() => {
     if (actionData && 'success' in actionData) {
       setCountdown(3)
@@ -96,6 +97,8 @@ export default function ResetPasswordPage() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(timer)
+            // 카운트다운 완료 시 로그인 페이지로 리다이렉트
+            navigate(`${ROUTES.LOGIN}?message=password_reset_success`)
             return 0
           }
           return prev - 1
@@ -103,7 +106,7 @@ export default function ResetPasswordPage() {
       }, 1000)
       return () => clearInterval(timer)
     }
-  }, [actionData])
+  }, [actionData, navigate])
 
   // 입력 필드 유효성 검사
   const isFormValid = newPassword.trim() !== '' && confirmPassword.trim() !== '' && !urlError
