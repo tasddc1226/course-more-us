@@ -6,11 +6,14 @@ import { getRegions, getTimeSlots } from "~/lib/data.server";
 import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
+import { getUserFavoritesForPlaces, toggleFavorite } from "~/lib/favorites.server";
 
-import { Button, Calendar, triggerCelebration } from "~/components/ui";
+import { Button, Calendar, triggerCelebration, Dropdown, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
+import { SearchBar } from "~/components/common";
+import { useState, useEffect, useRef } from "react";
 
 // 추천 결과 UI를 위한 타입 정의
 type TimeSlot = Tables<'time_slots'>;
@@ -140,12 +143,14 @@ function RecommendationResults({
   recommendations, 
   timeSlots,
   isAdmin = false,
-  userFeedbacks = {}
+  userFeedbacks = {},
+  userFavorites = {}
 }: { 
   recommendations: RecommendationResponse;
   timeSlots: TimeSlot[];
   isAdmin?: boolean;
   userFeedbacks?: Record<number, UserFeedback[]>;
+  userFavorites?: Record<number, boolean>;
 }) {
   const places = recommendations.places as PlaceWithTimeSlots[];
   const selectedTimeSlotIds = recommendations.metadata.requestInfo.timeSlotIds;
@@ -204,6 +209,7 @@ function RecommendationResults({
                 place={place} 
                 rank={index + 1}
                 userFeedbacks={userFeedbacks[place.id] || []}
+                isFavorite={userFavorites[place.id] || false}
               />
             ))}
           </div>
@@ -272,40 +278,67 @@ function LoadingSkeleton() {
 function PlaceCard({ 
   place, 
   rank, 
-  userFeedbacks 
+  userFeedbacks,
+  isFavorite = false
 }: { 
   place: PlaceWithTimeSlots; 
   rank: number;
   userFeedbacks?: UserFeedback[];
+  isFavorite?: boolean;
 }) {
   const fetcher = useFetcher();
-  const feedbacks = userFeedbacks?.filter(f => f.place_id === place.id) || [];
-  
-  // 로컬 피드백 상태 (fetcher 결과를 우선 반영)
-  let hasLike = feedbacks.some(f => f.feedback_type === 'like');
-  let hasDislike = feedbacks.some(f => f.feedback_type === 'dislike');
-  let hasVisited = feedbacks.some(f => f.feedback_type === 'visited');
-  
-  // fetcher 결과가 있으면 실시간 상태 업데이트
-  if (fetcher.data && typeof fetcher.data === 'object' && 'feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
-    const result = fetcher.data.feedbackResult as {
-      placeId: number;
-      feedbackType: FeedbackType;
-      isActive: boolean;
-    };
-    if (result.placeId === place.id) {
-      if (result.feedbackType === 'like') {
-        hasLike = result.isActive;
-      } else if (result.feedbackType === 'dislike') {
-        hasDislike = result.isActive;
-      } else if (result.feedbackType === 'visited') {
-        hasVisited = result.isActive;
+  const prevFavoriteRef = useRef<boolean>(isFavorite);
+
+  // 초기 피드백/즐겨찾기 상태 계산
+  const initialFeedbackState = {
+    like: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'like') || false,
+    dislike: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'dislike') || false,
+    visited: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'visited') || false,
+  };
+
+  // 로컬 상태: 즐겨찾기 & 피드백
+  const [favorite, setFavorite] = useState<boolean>(isFavorite);
+  const [feedbackState, setFeedbackState] = useState<typeof initialFeedbackState>(initialFeedbackState);
+
+  // prop 변경(다른 장소로 카드 재사용 등) 시 상태 동기화
+  useEffect(() => {
+    setFavorite(isFavorite);
+  }, [isFavorite, place.id]);
+
+  useEffect(() => {
+    setFeedbackState({
+      like: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'like') || false,
+      dislike: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'dislike') || false,
+      visited: userFeedbacks?.some(f => f.place_id === place.id && f.feedback_type === 'visited') || false,
+    });
+  }, [userFeedbacks, place.id]);
+
+  // fetcher 결과에 따라 로컬 상태 업데이트
+  useEffect(() => {
+    if (fetcher.data && typeof fetcher.data === 'object') {
+      if ('favoriteResult' in fetcher.data && fetcher.data.favoriteResult) {
+        const result = fetcher.data.favoriteResult as { placeId: number; isFavorite: boolean };
+        if (result.placeId === place.id) {
+          setFavorite(result.isFavorite);
+        }
+      } else if ('error' in fetcher.data && fetcher.data.error) {
+        // 서버 오류 시 롤백
+        setFavorite(prevFavoriteRef.current);
+      }
+
+      if ('feedbackResult' in fetcher.data && fetcher.data.feedbackResult) {
+        const result = fetcher.data.feedbackResult as { placeId: number; feedbackType: FeedbackType; isActive: boolean };
+        if (result.placeId === place.id) {
+          setFeedbackState(prev => ({
+            ...prev,
+            [result.feedbackType]: result.isActive,
+          }));
+        }
       }
     }
-  }
-  
-  // 피드백이 이미 제출되었는지 확인 (한 번이라도 피드백을 남겼으면 비활성화)
-  const hasFeedback = hasLike || hasDislike || hasVisited;
+  }, [fetcher.data, place.id]);
+
+  const hasFeedback = feedbackState.like || feedbackState.dislike || feedbackState.visited;
   const isSubmitting = fetcher.state === 'submitting';
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -329,16 +362,57 @@ function PlaceCard({
               </span>
             )}
           </div>
-          <div className="flex flex-col items-end text-sm text-gray-500 ml-2">
-            <div className="flex items-center">
-              <span className="text-yellow-400">⭐</span>
-              <span className="ml-1">{place.rating || 'N/A'}</span>
-            </div>
-            {place.recommendationScore && (
-              <div className="text-xs text-purple-600 mt-1">
-                추천 점수: {Math.round(place.recommendationScore)}
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end text-sm text-gray-500">
+              <div className="flex items-center">
+                <span className="text-yellow-400">⭐</span>
+                <span className="ml-1">{place.rating || 'N/A'}</span>
               </div>
-            )}
+              {place.recommendationScore && (
+                <div className="text-xs text-purple-600 mt-1">
+                  추천 점수: {Math.round(place.recommendationScore)}
+                </div>
+              )}
+            </div>
+            
+            {/* 즐겨찾기 버튼 */}
+            <button
+              onClick={() => {
+                // Optimistic UI: 즉시 토글
+                prevFavoriteRef.current = favorite;
+                setFavorite(!favorite);
+                fetcher.submit(
+                  {
+                    intent: 'favorite',
+                    placeId: place.id.toString()
+                  },
+                  { method: 'post' }
+                );
+              }}
+              disabled={isSubmitting}
+              className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+                isSubmitting ? 'opacity-60 cursor-not-allowed' : ''
+              } ${
+                favorite 
+                  ? 'text-red-500 hover:text-red-600 hover:bg-red-50' 
+                  : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+              }`}
+              title={favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+            >
+              <svg 
+                className="w-5 h-5" 
+                fill={favorite ? 'currentColor' : 'none'} 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                />
+              </svg>
+            </button>
           </div>
         </div>
         
@@ -460,9 +534,9 @@ function PlaceCard({
                 피드백을 남겨주셔서 감사합니다! 💝
               </div>
               <div className="text-xs text-gray-500">
-                {hasLike && '좋아요를 눌러주셨네요 😊'}
-                {hasDislike && '소중한 의견 감사합니다 🙏'}
-                {hasVisited && '방문 경험을 공유해주셔서 감사해요 ✨'}
+                {feedbackState.like && '좋아요를 눌러주셨네요 😊'}
+                {feedbackState.dislike && '소중한 의견 감사합니다 🙏'}
+                {feedbackState.visited && '방문 경험을 공유해주셔서 감사해요 ✨'}
               </div>
             </div>
           ) : (
@@ -604,6 +678,38 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
+  // 즐겨찾기 처리
+  if (intent === 'favorite') {
+    const placeId = parseInt(formData.get('placeId') as string);
+
+    if (!placeId) {
+      return json({ 
+        error: '장소 정보가 올바르지 않습니다.',
+        recommendations: null,
+        favoriteResult: null
+      }, { status: 400 });
+    }
+
+    try {
+      const result = await toggleFavorite(request, placeId);
+      return json({ 
+        error: null,
+        recommendations: null,
+        favoriteResult: {
+          placeId,
+          isFavorite: result.isFavorite
+        }
+      });
+    } catch (error) {
+      console.error('Favorite error:', error);
+      return json({ 
+        error: '즐겨찾기 처리 중 오류가 발생했습니다.',
+        recommendations: null,
+        favoriteResult: null
+      }, { status: 500 });
+    }
+  }
+
   // 피드백 처리
   if (intent === 'feedback') {
     const placeId = parseInt(formData.get('placeId') as string);
@@ -639,7 +745,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   // 추천 요청 처리
-  const regionId = parseInt(formData.get('regionId') as string);
+  const regionIdValue = formData.get('regionId')
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
 
@@ -653,11 +759,22 @@ export async function action({ request }: ActionFunctionArgs) {
   const minRatingRaw = formData.get('minRating') as string | null;
   const minRating = minRatingRaw ? parseFloat(minRatingRaw) : undefined;
 
-  if (!regionId || !date || timeSlotIds.length === 0) {
+  if (!regionIdValue || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
       recommendations: null,
-      userFeedbacks: null
+      userFeedbacks: null,
+      userFavorites: null
+    }, { status: 400 });
+  }
+
+  const regionId = parseInt(regionIdValue as string)
+  if (isNaN(regionId)) {
+    return json({ 
+      error: '유효하지 않은 지역입니다.',
+      recommendations: null,
+      userFeedbacks: null,
+      userFavorites: null
     }, { status: 400 });
   }
 
@@ -680,21 +797,26 @@ export async function action({ request }: ActionFunctionArgs) {
       diversityWeight: 0.3
     });
 
-    // 추천 결과와 함께 사용자 피드백 정보도 가져오기
+    // 추천 결과와 함께 사용자 피드백, 즐겨찾기 정보도 가져오기
     const placeIds = recommendations.places.map(place => place.id);
-    const userFeedbacks = await getUserFeedbacksForPlaces(request, placeIds);
+    const [userFeedbacks, userFavorites] = await Promise.all([
+      getUserFeedbacksForPlaces(request, placeIds),
+      getUserFavoritesForPlaces(request, placeIds)
+    ]);
 
     return json({ 
       error: null,
       recommendations,
-      userFeedbacks
+      userFeedbacks,
+      userFavorites
     });
   } catch (error) {
     console.error('Recommendation error:', error);
     return json({ 
       error: '추천을 가져오는 중 오류가 발생했습니다.',
       recommendations: null,
-      userFeedbacks: null
+      userFeedbacks: null,
+      userFavorites: null
     }, { status: 500 });
   }
 }
@@ -705,6 +827,16 @@ export default function Index() {
   const navigation = useNavigation();
   
   const isLoading = navigation.state === 'submitting';
+  
+  // 지역 선택 상태 관리
+  const [selectedRegionId, setSelectedRegionId] = useState<string | number | null>(null);
+  
+  // 지역 옵션 변환
+  const regionOptions: DropdownOption[] = regions.map(region => ({
+    value: String(region.id),
+    label: region.name,
+    description: region.description || undefined
+  }));
 
   if (!user) {
     return (
@@ -772,17 +904,50 @@ export default function Index() {
       </header>
       
       <main className="max-w-md mx-auto px-4 py-6">
-        <div className="text-center mb-6">
+        <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-3">
             오늘은 어떤 데이트를 해볼까요?
           </h2>
           <p className="text-gray-600 text-sm">
-            지역과 시간을 선택하면 맞춤 데이트 코스를 추천해드려요
+            원하는 방법을 선택해서 완벽한 데이트를 계획해보세요
           </p>
         </div>
 
-        {/* 추천 요청 폼 */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        {/* 장소 검색 영역 */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-xl">🔍</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-blue-800">장소 검색</h3>
+              <p className="text-sm text-blue-600">원하는 장소를 바로 찾아보세요</p>
+            </div>
+          </div>
+          <SearchBar />
+          <p className="text-xs text-blue-500 mt-3">
+            💡 태그, 지역명, 장소명으로 검색할 수 있어요
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <span className="text-sm text-gray-500 font-medium">또는</span>
+          <div className="flex-1 h-px bg-gray-200"></div>
+        </div>
+
+        {/* 맞춤 추천 영역 */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-xl">✨</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-purple-800">맞춤 데이트 코스 추천</h3>
+              <p className="text-sm text-purple-600">AI가 선별한 완벽한 데이트 코스를 받아보세요</p>
+            </div>
+          </div>
+          
           <Form method="post" className="space-y-6">
             {actionData?.error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -792,22 +957,24 @@ export default function Index() {
 
             {/* 지역 선택 */}
             <div>
-              <label htmlFor="regionId" className="block text-sm font-medium text-gray-700 mb-2">
-                지역 선택 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="regionId"
-                name="regionId"
+              <Dropdown
+                options={regionOptions}
+                selectedValue={selectedRegionId}
+                onSelect={setSelectedRegionId}
+                label="지역 선택"
+                placeholder="지역을 선택해주세요"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              >
-                <option value="">지역을 선택해주세요</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
+                searchable
+                variant="default"
+              />
+              {/* Form 전송용 hidden input */}
+              {selectedRegionId && (
+                <input
+                  type="hidden"
+                  name="regionId"
+                  value={selectedRegionId}
+                />
+              )}
             </div>
 
             {/* 날짜 선택 */}
@@ -907,7 +1074,7 @@ export default function Index() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -921,6 +1088,10 @@ export default function Index() {
               )}
             </Button>
           </Form>
+          
+          <p className="text-xs text-purple-500 mt-4">
+            🎯 선택하신 조건에 맞는 최적의 데이트 코스를 AI가 추천해드려요
+          </p>
         </div>
 
         {/* 추천 결과 */}
@@ -932,6 +1103,7 @@ export default function Index() {
             timeSlots={timeSlots}
             isAdmin={userIsAdmin}
             userFeedbacks={actionData.userFeedbacks || {}}
+            userFavorites={actionData.userFavorites || {}}
           />
         ) : null}
       </main>

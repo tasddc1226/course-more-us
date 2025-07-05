@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "~/lib/supabase.server";
+import { createSupabaseServerClient, supabaseAdmin } from "~/lib/supabase.server";
 import { findOrCreateRegion } from "~/lib/data.server";
 import type { UserPlaceFormData } from "~/types/forms";
 import { createClient } from "@supabase/supabase-js";
@@ -86,28 +86,30 @@ export async function createUserPlaceFromLocation(
   const region = await findOrCreateRegion(request, placeData.regionName);
 
   // 장소 등록
+  const placeInsertData = {
+    name: placeData.placeName,
+    address: placeData.address,
+    description: placeData.description,
+    latitude: placeData.latitude,
+    longitude: placeData.longitude,
+    tags: placeData.tags,
+    category_id: placeData.category_id,
+    region_id: region.id,
+    user_id: user.id,
+    source: 'user',
+    is_active: true,
+    rating: placeData.rating,
+    price_range: 2
+  }
+  
   const { data: place, error: placeError } = await supabase
     .from('places')
-    .insert({
-      name: placeData.placeName,
-      address: placeData.address,
-      description: placeData.description,
-      latitude: placeData.latitude,
-      longitude: placeData.longitude,
-      tags: placeData.tags,
-      category_id: placeData.category_id,
-      region_id: region.id,
-      user_id: user.id,
-      source: 'user',
-      is_active: true,
-      rating: placeData.rating,
-      price_range: 2
-    })
+    .insert(placeInsertData)
     .select()
     .single();
 
   if (placeError) {
-    console.error('Error creating user place:', placeError);
+    console.error('장소 DB 삽입 오류:', placeError);
     throw new Error("장소 등록 중 오류가 발생했습니다");
   }
 
@@ -120,12 +122,12 @@ export async function createUserPlaceFromLocation(
       is_primary: index === 0
     }));
 
-    const { error: imageError } = await supabase
+    const { error: imageError } = await supabaseAdmin
       .from('place_images')
       .insert(imageInserts);
 
     if (imageError) {
-      console.error('Error creating place images:', imageError);
+      console.error('이미지 등록 오류:', imageError);
       // 이미지 오류는 장소 등록을 실패시키지 않음
     }
   }
@@ -138,6 +140,10 @@ export async function createUserPlaceFromLocation(
       .select('start_time, end_time')
       .eq('id', placeData.selectedTimeSlot)
       .single();
+
+    if (timeSlotError) {
+      console.error('시간대 조회 오류:', timeSlotError);
+    }
 
     if (!timeSlotError && timeSlot) {
       // start_time~end_time 형식으로 운영시간 생성
@@ -155,21 +161,28 @@ export async function createUserPlaceFromLocation(
       }
 
       // 장소의 운영시간 업데이트
-      await supabase
+      const { error: updateError } = await supabase
         .from('places')
         .update({ operating_hours: operatingHours })
         .eq('id', place.id);
 
+      if (updateError) {
+        console.error('운영시간 업데이트 오류:', updateError);
+      }
+
       // place_time_slots 테이블에 시간대 정보 추가
-      await supabase
+      const { error: timeSlotInsertError } = await supabase
         .from('place_time_slots')
         .insert({
           place_id: place.id,
           time_slot_id: placeData.selectedTimeSlot
         });
+
+      if (timeSlotInsertError) {
+        console.error('시간대 정보 삽입 오류:', timeSlotInsertError);
+      }
     }
   }
-
   return place;
 }
 

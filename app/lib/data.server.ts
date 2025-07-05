@@ -1,4 +1,4 @@
- import { createSupabaseServerClient } from './supabase.server'
+ import { createSupabaseServerClient, supabaseAdmin } from './supabase.server'
 import { getCachedData, setCachedData, invalidateRegionsCache } from './cache.server'
 
 // 모든 지역 조회 (사용자용) - 캐싱 적용
@@ -70,6 +70,7 @@ export async function findOrCreateRegion(request: Request, regionName: string) {
     .single()
 
   if (findError && findError.code !== 'PGRST116') { // PGRST116은 "not found" 에러
+    console.error('지역 검색 오류:', findError)
     throw findError
   }
 
@@ -84,8 +85,8 @@ export async function findOrCreateRegion(request: Request, regionName: string) {
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9가-힣-]/g, '')
 
-  // 새 지역 생성
-  const { data: newRegion, error: createError } = await supabase
+  // 새 지역 생성 (service role 사용하여 RLS 우회)
+  const { data: newRegion, error: createError } = await supabaseAdmin
     .from('regions')
     .insert({
       name: regionName,
@@ -95,7 +96,10 @@ export async function findOrCreateRegion(request: Request, regionName: string) {
     .select()
     .single()
 
-  if (createError) throw createError
+  if (createError) {
+    console.error('지역 생성 오류:', createError)
+    throw createError
+  }
   
   // 새 지역이 추가되었으므로 캐시 무효화
   invalidateRegionsCache()

@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -17,10 +18,10 @@ export type Database = {
     Functions: {
       graphql: {
         Args: {
-          query?: string
-          extensions?: Json
-          variables?: Json
           operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
         }
         Returns: Json
       }
@@ -230,30 +231,56 @@ export type Database = {
       }
       regions: {
         Row: {
+          coordinates: unknown | null
           created_at: string | null
           description: string | null
+          display_order: number | null
           id: number
+          is_popular: boolean | null
           name: string
+          parent_region_id: number | null
+          region_type: string | null
+          search_keywords: string[] | null
           slug: string
           updated_at: string | null
         }
         Insert: {
+          coordinates?: unknown | null
           created_at?: string | null
           description?: string | null
+          display_order?: number | null
           id?: number
+          is_popular?: boolean | null
           name: string
+          parent_region_id?: number | null
+          region_type?: string | null
+          search_keywords?: string[] | null
           slug: string
           updated_at?: string | null
         }
         Update: {
+          coordinates?: unknown | null
           created_at?: string | null
           description?: string | null
+          display_order?: number | null
           id?: number
+          is_popular?: boolean | null
           name?: string
+          parent_region_id?: number | null
+          region_type?: string | null
+          search_keywords?: string[] | null
           slug?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "regions_parent_region_id_fkey"
+            columns: ["parent_region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       time_slots: {
         Row: {
@@ -327,56 +354,124 @@ export type Database = {
         }
         Relationships: []
       }
+      user_favorites: {
+        Row: {
+          created_at: string | null
+          id: number
+          place_id: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          place_id: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          place_id?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_feedback: {
+        Row: {
+          content: string
+          created_at: string | null
+          feedback_type: string
+          id: number
+          priority: string
+          status: string
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          feedback_type?: string
+          id?: number
+          priority?: string
+          status?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          feedback_type?: string
+          id?: number
+          priority?: string
+          status?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
           bio: string | null
-          created_at: string
+          created_at: string | null
           id: string
           nickname: string | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
-          created_at?: string
+          created_at?: string | null
           id: string
           nickname?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
-          created_at?: string
+          created_at?: string | null
           id?: string
           nickname?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
       user_recommendation_feedback: {
         Row: {
-          created_at: string
+          created_at: string | null
           feedback_type: string
           id: number
           place_id: number
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           feedback_type: string
           id?: number
           place_id: number
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           feedback_type?: string
           id?: number
           place_id?: number
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -388,42 +483,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_feedback: {
-        Row: {
-          id: number
-          user_id: string
-          feedback_type: string
-          title: string | null
-          content: string
-          status: string
-          priority: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          user_id: string
-          feedback_type?: string
-          title?: string | null
-          content: string
-          status?: string
-          priority?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          user_id?: string
-          feedback_type?: string
-          title?: string | null
-          content?: string
-          status?: string
-          priority?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       user_roles: {
         Row: {
@@ -454,7 +513,50 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      search_regions: {
+        Args: { search_term: string }
+        Returns: {
+          id: number
+          name: string
+          slug: string
+          description: string
+          region_type: string
+          parent_name: string
+          match_score: number
+        }[]
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -578,4 +680,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

@@ -1,8 +1,9 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Form, useActionData, Link } from "@remix-run/react";
+import { useState } from "react";
 import { getRegions, getCategories, getTimeSlots, createPlace, updatePlaceTimeSlots } from "~/lib/admin.server";
-import { Button, Input } from "~/components/ui";
+import { Button, Input, Dropdown, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
@@ -41,6 +42,41 @@ export async function action({ request }: ActionFunctionArgs) {
       sunday: formData.get('hours_sunday') as string || '',
     };
 
+    // 필수 필드 검증
+    const categoryIdValue = formData.get('category_id')
+    const regionIdValue = formData.get('region_id')
+    
+    if (!categoryIdValue) {
+      return json({ 
+        error: '카테고리를 선택해주세요.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    if (!regionIdValue) {
+      return json({ 
+        error: '지역을 선택해주세요.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    const categoryId = parseInt(categoryIdValue as string)
+    const regionId = parseInt(regionIdValue as string)
+    
+    if (isNaN(categoryId)) {
+      return json({ 
+        error: '유효하지 않은 카테고리입니다.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    if (isNaN(regionId)) {
+      return json({ 
+        error: '유효하지 않은 지역입니다.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
     // 기본 장소 정보
     const placeData = {
       name: formData.get('name') as string,
@@ -53,8 +89,8 @@ export async function action({ request }: ActionFunctionArgs) {
       rating: parseFloat(formData.get('rating') as string) || 0,
       price_range: parseInt(formData.get('price_range') as string) || 1,
       is_partnership: formData.get('is_partnership') === 'on',
-      region_id: parseInt(formData.get('region_id') as string),
-      category_id: parseInt(formData.get('category_id') as string),
+      region_id: regionId,
+      category_id: categoryId,
       is_active: formData.get('is_active') === 'on',
       tags,
       operating_hours: operatingHours
@@ -92,6 +128,25 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function NewPlace() {
   const { regions, categories, timeSlots } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+
+  // 카테고리 및 지역 선택 상태
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number | null>(null);
+  const [selectedRegionId, setSelectedRegionId] = useState<string | number | null>(null);
+
+  // 카테고리 옵션 변환
+  const categoryOptions: DropdownOption[] = categories.map(category => ({
+    value: String(category.id),
+    label: category.name,
+    icon: category.icon || '',
+    description: category.description || undefined
+  }));
+
+  // 지역 옵션 변환
+  const regionOptions: DropdownOption[] = regions.map(region => ({
+    value: String(region.id),
+    label: region.name,
+    description: region.description || undefined
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,41 +188,43 @@ export default function NewPlace() {
               </div>
 
               <div>
-                <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 mb-2">
-                  카테고리 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="category_id"
-                  name="category_id"
+                <Dropdown
+                  options={categoryOptions}
+                  selectedValue={selectedCategoryId}
+                  onSelect={setSelectedCategoryId}
+                  label="카테고리"
+                  placeholder="카테고리를 선택하세요"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="">카테고리 선택</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.icon} {category.name}
-                    </option>
-                  ))}
-                </select>
+                  searchable
+                  variant="default"
+                />
+                {selectedCategoryId && (
+                  <input
+                    type="hidden"
+                    name="category_id"
+                    value={selectedCategoryId}
+                  />
+                )}
               </div>
 
               <div>
-                <label htmlFor="region_id" className="block text-sm font-medium text-gray-700 mb-2">
-                  지역 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="region_id"
-                  name="region_id"
+                <Dropdown
+                  options={regionOptions}
+                  selectedValue={selectedRegionId}
+                  onSelect={setSelectedRegionId}
+                  label="지역"
+                  placeholder="지역을 선택하세요"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="">지역 선택</option>
-                  {regions.map((region) => (
-                    <option key={region.id} value={region.id}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
+                  searchable
+                  variant="default"
+                />
+                {selectedRegionId && (
+                  <input
+                    type="hidden"
+                    name="region_id"
+                    value={selectedRegionId}
+                  />
+                )}
               </div>
 
               <div>

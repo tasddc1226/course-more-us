@@ -8,7 +8,17 @@
     "dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "remix-serve ./build/server/index.js",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:pull": "supabase db pull",
+    "db:push": "supabase db push",
+    "db:diff": "supabase db diff",
+    "db:migrate": "supabase migration up",
+    "db:seed": "supabase seed",
+    "types:generate": "supabase gen types typescript --local > app/types/database.types.ts",
+    "types:generate:remote": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > app/types/database.types.ts"
   },
   "dependencies": {
     "@remix-run/node": "^2.16.8",

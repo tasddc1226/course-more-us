@@ -1,13 +1,13 @@
 import type { MetaFunction, LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/node'
-import { useLoaderData, Link, Form, useActionData, useSubmit } from '@remix-run/react'
+import { useLoaderData, Link, useActionData, useSubmit } from '@remix-run/react'
 import { useState, useEffect } from 'react'
 import { requireAuth } from '~/lib/auth.server'
 import { isAdmin } from '~/lib/admin.server'
 import { getUserAgreements, toggleMarketingAgreement } from '~/lib/agreements.server'
 import { getUserProfile } from '~/lib/profile.server'
 import { createUserFeedback } from '~/lib/feedback.server'
-import { Button, FeedbackModal, triggerCelebration } from '~/components/ui'
+import { FeedbackModal, triggerCelebration } from '~/components/ui'
 
 import { ROUTES } from '~/constants/routes'
 import { formatDate } from '~/utils/date'
@@ -117,6 +117,12 @@ export default function MyProfile() {
       description: '새로운 데이트 장소 추천',
       icon: '➕',
       href: ROUTES.REGISTER_PLACE,
+    },
+    {
+      title: '내 즐겨찾기',
+      description: '즐겨찾기한 데이트 장소 확인',
+      icon: '❤️',
+      href: ROUTES.MY_FAVORITES,
     },
     ...(userIsAdmin ? [{
       title: '관리자',
@@ -269,19 +275,6 @@ export default function MyProfile() {
             
             return null
           })}
-        </div>
-
-        {/* 로그아웃 버튼 */}
-        <div className="mt-8">
-          <Form method="post" action={ROUTES.LOGOUT}>
-            <Button 
-              type="submit" 
-              variant="danger" 
-              className="w-full rounded-2xl py-3"
-            >
-              로그아웃
-            </Button>
-          </Form>
         </div>
       </div>
 
