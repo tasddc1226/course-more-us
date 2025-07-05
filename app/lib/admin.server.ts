@@ -327,4 +327,41 @@ export async function getUserStats(request: Request) {
     adminUsers,
     regularUsers,
   }
+}
+
+// 탈퇴 사유 통계 조회
+export async function getAccountDeletionStats(request: Request) {
+  await requireAdmin(request)
+
+  // 탈퇴 사유별 집계 (user_feedback 테이블의 account_deletion 타이틀)
+  const { data: deletionReasons, error } = await supabaseAdmin
+    .from('user_feedback')
+    .select('content')
+    .eq('title', 'account_deletion')
+
+  if (error) throw error
+
+  // 사유별 카운트 집계
+  const reasonCounts = new Map<string, number>()
+  let totalDeletions = 0
+
+  for (const feedback of deletionReasons || []) {
+    const reason = feedback.content?.trim() || '사유 없음'
+    reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1)
+    totalDeletions++
+  }
+
+  // Map을 배열로 변환하고 카운트 순으로 정렬
+  const reasonStats = Array.from(reasonCounts.entries())
+    .map(([reason, count]) => ({
+      reason,
+      count,
+      percentage: totalDeletions > 0 ? Math.round((count / totalDeletions) * 100) : 0
+    }))
+    .sort((a, b) => b.count - a.count)
+
+  return {
+    totalDeletions,
+    reasonStats
+  }
 } 

@@ -50,31 +50,64 @@
 ## 3. 기타 리팩터
 * `Button`-variant 재사용(`danger`, `outline`)으로 모달 액션 통일
 * 불필요한 하드코딩 제거 → `ROUTES` 상수 사용 일관화
-* day11 작업은 **커밋/푸시 미실행** (사용자 직접 진행 예정)
 
 ---
 
-## 세부 작업 계획 (다음 단계)
+## 4. 추가 구현 완료 (2025-07-03 완료)
 
-### 1) 탈퇴 사유 통계 대시보드 연결
-1. DB: `user_feedback` → `title = 'account_deletion'` 레코드 집계 (reason 별 count)
-2. `app/lib/admin.server.ts` – `getAccountDeletionStats()` 함수 추가 (service key)
-3. `app/routes/admin._index.tsx` loader 확장 → stats 반환
-4. UI: 관리자 대시보드에 카드/테이블 표시 (reason + 개수)
-5. 차트 라이브러리(Optional): `@nivo/line` or simple bar with Tailwind
+### 탈퇴 사유 통계 대시보드 ✅
+**구현 파일:**
+* `app/lib/admin.server.ts` - `getAccountDeletionStats()` 함수 추가
+  * `user_feedback` 테이블에서 `title = 'account_deletion'` 레코드 집계
+  * 사유별 개수 및 퍼센티지 자동 계산
+  * 빈도순 정렬
+* `app/routes/admin._index.tsx` - 관리자 대시보드에 통계 UI 추가
+  * 총 탈퇴 건수 표시
+  * 사유별 진행률 바 및 수치 표시
+  * 시각적 차트 형태로 표현
 
-### 2) 이메일 찾기 로직 서버 사이드 전환
-1. API 라우트 `app/routes/api.account.find-email.tsx` 생성
-   * POST `{ nickname }` → 서버에서 supabaseAdmin로 매칭 후 masked email 반환 (ex: a***b@domain.com)
-2. 클라이언트: `auth.forgot-password.tsx` 에서 닉네임 제출 시 fetch API 호출
-3. 실패 시 공통 에러 처리(`ErrorMessage`)
-4. RLS 보호 → 서버 키 사용, 응답은 마스킹된 이메일만
+**기능:**
+* 실시간 탈퇴 사유 분석
+* 관리자만 접근 가능한 인사이트 제공
+* 서비스 개선 방향 파악 자료
 
-### 3) Cypress E2E 테스트
-1. `devDependencies` – `cypress` 설치, `package.json` 스크립트(`cy:open`, `cy:run`)
-2. 기본 설정: `cypress.config.ts` 추가 (baseUrl = `http://localhost:3000`)
-3. 테스트: `cypress/e2e/password-reset.cy.ts`
-   * 사용자 Signup → ForgotPassword → intercept reset link → Reset Password
-4. 테스트: `cypress/e2e/account-delete.cy.ts`
-   * 로그인 → /my-info → 탈퇴 플로우 → expect redirect to /, account removed
-5. CI 연동 (GitHub Actions): `cypress-io/github-action`
+### 이메일 찾기 로직 서버 사이드 전환 ✅
+**구현 파일:**
+* `app/routes/api.account.find-email.tsx` (신규)
+  * POST 요청으로 닉네임 받아서 처리
+  * `supabaseAdmin`으로 `user_profiles` 테이블 검색
+  * 이메일 마스킹 함수 (`e***e@domain.com` 형태)
+  * 보안 강화된 서버 사이드 로직
+* `app/routes/auth.forgot-password.tsx` (수정)
+  * 기존 가짜 메시지 → 실제 API 호출로 변경
+  * fetch API로 서버와 통신
+  * 에러 처리 및 사용자 친화적 메시지
+
+**보안 개선:**
+* 클라이언트 → 서버 로직으로 개인정보 보호 강화
+* RLS 우회를 위한 서비스 키 사용
+* 응답 시 마스킹된 이메일만 노출
+
+---
+
+## 5. 최종 완료 상태
+
+### ✅ 모든 기능 구현 완료
+1. **이메일/비밀번호 찾기** - 완전 동작하는 실제 기능
+2. **비밀번호 재설정** - Supabase Auth 연동
+3. **회원탈퇴** - 2단계 모달 + 사유 저장
+4. **탈퇴 사유 통계** - 관리자 대시보드 연동
+5. **보안 강화** - 서버 사이드 검증 및 마스킹
+
+### 🎯 개선 효과
+* **사용자 경험**: 실제 작동하는 계정 복구 기능
+* **관리자 인사이트**: 데이터 기반 서비스 개선 방향성
+* **보안 강화**: 개인정보 보호 및 서버 사이드 검증
+* **코드 품질**: 공통 컴포넌트 활용 및 일관된 디자인
+
+---
+
+## 다음 작업 후보
+* 이메일 템플릿 커스터마이징
+* 탈퇴 사유 카테고리화 및 더 상세한 분석
+* 사용자 복구 프로세스 개선

@@ -37,9 +37,28 @@ export default function ForgotPasswordPage() {
     setError(null)
     setMessage(null)
     setIsSubmitting(true)
-    // 실제 이메일 조회는 보안 및 개인정보 보호를 위해 서버 사이드 로직 또는 고객센터 문의로 대체
-    setMessage('입력하신 닉네임으로 가입된 이메일 주소로 안내 메일을 발송했습니다(가정).')
-    setIsSubmitting(false)
+    
+    try {
+      const formData = new FormData()
+      formData.append('nickname', nickname.trim())
+      
+      const response = await fetch('/api/account/find-email', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        setMessage(data.message)
+      } else {
+        setError(data.error || '이메일 조회 중 오류가 발생했습니다.')
+      }
+    } catch (error) {
+      setError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
