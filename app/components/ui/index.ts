@@ -15,4 +15,5 @@ export {
   triggerAchievementCelebration,
   triggerLikeCelebration,
   type CelebrationTypes
-} from './ConfettiCelebration'; 
+} from './ConfettiCelebration';
+export { Dropdown, type DropdownOption } from './Dropdown'; 

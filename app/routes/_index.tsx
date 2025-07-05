@@ -8,10 +8,11 @@ import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType, type UserFeedback } from "~/lib/feedback.server";
 import { getUserFavoritesForPlaces, toggleFavorite } from "~/lib/favorites.server";
 
-import { Button, Calendar, triggerCelebration } from "~/components/ui";
+import { Button, Calendar, triggerCelebration, Dropdown, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse, RecommendedPlace } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
+import { SearchBar } from "~/components/common";
 import { useState, useEffect, useRef } from "react";
 
 // 추천 결과 UI를 위한 타입 정의
@@ -744,13 +745,23 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   // 추천 요청 처리
-  const regionId = parseInt(formData.get('regionId') as string);
+  const regionIdValue = formData.get('regionId')
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
 
-  if (!regionId || !date || timeSlotIds.length === 0) {
+  if (!regionIdValue || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
+      recommendations: null,
+      userFeedbacks: null,
+      userFavorites: null
+    }, { status: 400 });
+  }
+
+  const regionId = parseInt(regionIdValue as string)
+  if (isNaN(regionId)) {
+    return json({ 
+      error: '유효하지 않은 지역입니다.',
       recommendations: null,
       userFeedbacks: null,
       userFavorites: null
@@ -796,6 +807,16 @@ export default function Index() {
   const navigation = useNavigation();
   
   const isLoading = navigation.state === 'submitting';
+  
+  // 지역 선택 상태 관리
+  const [selectedRegionId, setSelectedRegionId] = useState<string | number | null>(null);
+  
+  // 지역 옵션 변환
+  const regionOptions: DropdownOption[] = regions.map(region => ({
+    value: String(region.id),
+    label: region.name,
+    description: region.description || undefined
+  }));
 
   if (!user) {
     return (
@@ -863,17 +884,50 @@ export default function Index() {
       </header>
       
       <main className="max-w-md mx-auto px-4 py-6">
-        <div className="text-center mb-6">
+        <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-3">
             오늘은 어떤 데이트를 해볼까요?
           </h2>
           <p className="text-gray-600 text-sm">
-            지역과 시간을 선택하면 맞춤 데이트 코스를 추천해드려요
+            원하는 방법을 선택해서 완벽한 데이트를 계획해보세요
           </p>
         </div>
 
-        {/* 추천 요청 폼 */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        {/* 장소 검색 영역 */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-xl">🔍</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-blue-800">장소 검색</h3>
+              <p className="text-sm text-blue-600">원하는 장소를 바로 찾아보세요</p>
+            </div>
+          </div>
+          <SearchBar />
+          <p className="text-xs text-blue-500 mt-3">
+            💡 태그, 지역명, 장소명으로 검색할 수 있어요
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <span className="text-sm text-gray-500 font-medium">또는</span>
+          <div className="flex-1 h-px bg-gray-200"></div>
+        </div>
+
+        {/* 맞춤 추천 영역 */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-xl">✨</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-purple-800">맞춤 데이트 코스 추천</h3>
+              <p className="text-sm text-purple-600">AI가 선별한 완벽한 데이트 코스를 받아보세요</p>
+            </div>
+          </div>
+          
           <Form method="post" className="space-y-6">
             {actionData?.error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -883,22 +937,24 @@ export default function Index() {
 
             {/* 지역 선택 */}
             <div>
-              <label htmlFor="regionId" className="block text-sm font-medium text-gray-700 mb-2">
-                지역 선택 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="regionId"
-                name="regionId"
+              <Dropdown
+                options={regionOptions}
+                selectedValue={selectedRegionId}
+                onSelect={setSelectedRegionId}
+                label="지역 선택"
+                placeholder="지역을 선택해주세요"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              >
-                <option value="">지역을 선택해주세요</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
+                searchable
+                variant="default"
+              />
+              {/* Form 전송용 hidden input */}
+              {selectedRegionId && (
+                <input
+                  type="hidden"
+                  name="regionId"
+                  value={selectedRegionId}
+                />
+              )}
             </div>
 
             {/* 날짜 선택 */}
@@ -942,7 +998,7 @@ export default function Index() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" size="lg" disabled={isLoading}>
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -956,6 +1012,10 @@ export default function Index() {
               )}
             </Button>
           </Form>
+          
+          <p className="text-xs text-purple-500 mt-4">
+            🎯 선택하신 조건에 맞는 최적의 데이트 코스를 AI가 추천해드려요
+          </p>
         </div>
 
         {/* 추천 결과 */}

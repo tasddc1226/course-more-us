@@ -6,6 +6,7 @@ interface ClientOnlyKakaoMapProps {
   initialLocation?: PlaceLocationData
   height?: string
   className?: string
+  initialSearchKeyword?: string
 }
 
 export default function ClientOnlyKakaoMap(props: ClientOnlyKakaoMapProps) {

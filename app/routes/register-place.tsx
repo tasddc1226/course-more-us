@@ -1,9 +1,9 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from '@remix-run/node'
-import { useLoaderData, Form, useActionData, Link, useNavigation } from '@remix-run/react'
+import { useLoaderData, useActionData, Link, useNavigation, useFetcher } from '@remix-run/react'
 import { useState } from 'react'
 import { getCategories, getTimeSlots } from '~/lib/data.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
-import { Button } from '~/components/ui'
+import { Button, Dropdown, type DropdownOption } from '~/components/ui'
 import { ClientOnlyKakaoMap, PageHeader } from '~/components/common'
 import { ImageUpload, StarRating } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
@@ -21,6 +21,9 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAuth(request)
   
+  const url = new URL(request.url)
+  const prefilledName = url.searchParams.get('name') || ''
+  
   const [categories, todayCount, timeSlots] = await Promise.all([
     getCategories(request),
     getTodayPlaceCount(request),
@@ -30,7 +33,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({ 
     categories: categories as Tables<'categories'>[], 
     todayCount, 
-    timeSlots: timeSlots as Tables<'time_slots'>[] 
+    timeSlots: timeSlots as Tables<'time_slots'>[],
+    prefilledName
   })
 }
 
@@ -40,6 +44,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData()
 
   try {
+
     // 일일 제한 체크
     const todayCount = await getTodayPlaceCount(request)
     if (todayCount >= 3) {
@@ -110,6 +115,23 @@ export async function action({ request }: ActionFunctionArgs) {
     const selectedTimeSlot = formData.get('selectedTimeSlot') ? parseInt(formData.get('selectedTimeSlot') as string) : undefined
     const selectedPeriod = formData.get('selectedPeriod') as 'weekday' | 'weekend' | undefined
 
+    // 필수 필드 검증
+    const categoryIdValue = formData.get('category_id')
+    if (!categoryIdValue) {
+      return json({ 
+        error: '카테고리를 선택해주세요.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
+    const categoryId = parseInt(categoryIdValue as string)
+    if (isNaN(categoryId)) {
+      return json({ 
+        error: '유효하지 않은 카테고리입니다.',
+        values: Object.fromEntries(formData)
+      }, { status: 400 })
+    }
+
     // 장소 데이터 구성
     const placeData = {
       placeName,
@@ -117,7 +139,7 @@ export async function action({ request }: ActionFunctionArgs) {
       address,
       latitude,
       longitude,
-      category_id: parseInt(formData.get('category_id') as string),
+      category_id: categoryId,
       description: formData.get('description') as string,
       rating,
       tags,
@@ -140,10 +162,11 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RegisterPlace() {
-  const { categories, todayCount, timeSlots } = useLoaderData<typeof loader>()
+  const { categories, todayCount, timeSlots, prefilledName } = useLoaderData<typeof loader>()
   const actionData = useActionData<typeof action>()
   const navigation = useNavigation()
-  const isSubmitting = navigation.state === 'submitting'
+  const fetcher = useFetcher()
+  const isSubmitting = navigation.state === 'submitting' || fetcher.state === 'submitting'
   
   // 지도에서 선택된 위치 정보
   const [selectedLocation, setSelectedLocation] = useState<PlaceLocationData | null>(null)
@@ -159,6 +182,19 @@ export default function RegisterPlace() {
   // 운영시간 UI용 상태
   const [selectedPeriod, setSelectedPeriod] = useState<'weekday' | 'weekend'>('weekday')
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<number | null>(null)
+  
+  // 카테고리 선택 상태
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | number | null>(
+    actionData?.values?.category_id ? String(actionData.values.category_id) : null
+  )
+
+  // 카테고리 옵션 변환
+  const categoryOptions: DropdownOption[] = categories.map(category => ({
+    value: String(category.id),
+    label: category.name,
+    icon: category.icon || '',
+    description: category.description || undefined
+  }))
 
   const selectTimeSlot = (timeSlotId: number) => {
     setSelectedTimeSlot(selectedTimeSlot === timeSlotId ? null : timeSlotId)
@@ -189,6 +225,25 @@ export default function RegisterPlace() {
     )
   }
 
+  // 커스텀 Form 제출 핸들러
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    
+    // 압축된 이미지들을 FormData에 추가
+    compressedImages.forEach((file) => {
+      formData.append('images', file, file.name)
+    })
+    
+    // Remix fetcher로 제출
+    fetcher.submit(formData, {
+      method: 'POST',
+      encType: 'multipart/form-data'
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
       <PageHeader 
@@ -209,10 +264,10 @@ export default function RegisterPlace() {
             </p>
           </div>
           
-          <Form method="post" encType="multipart/form-data" className="p-6 space-y-6">
-            {actionData?.error && (
+          <form onSubmit={handleSubmit} encType="multipart/form-data" className="p-6 space-y-6">
+            {(actionData?.error || (fetcher.data as { error?: string })?.error) && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {actionData.error}
+                {actionData?.error || (fetcher.data as { error?: string })?.error}
               </div>
             )}
 
@@ -222,10 +277,28 @@ export default function RegisterPlace() {
                 위치 선택 <span className="text-red-500">*</span>
               </div>
               
+              {/* 검색어로부터 온 경우 안내 메시지 */}
+              {prefilledName && (
+                <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-purple-600">💡</span>
+                    <div>
+                                             <p className="text-sm font-medium text-purple-800">
+                         <span className="font-semibold">&ldquo;{prefilledName}&rdquo;</span> 장소를 등록하시나요?
+                       </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        아래 지도에서 해당 장소를 검색하여 정확한 위치를 선택해주세요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <ClientOnlyKakaoMap
                 onLocationSelect={setSelectedLocation}
                 height="400px"
                 className="mb-4"
+                initialSearchKeyword={prefilledName}
               />
               
               {/* 선택된 위치 정보를 hidden input으로 전송 */}
@@ -253,23 +326,24 @@ export default function RegisterPlace() {
 
             {/* 카테고리 */}
             <div>
-              <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 mb-2">
-                카테고리 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="category_id"
-                name="category_id"
+              <Dropdown
+                options={categoryOptions}
+                selectedValue={selectedCategoryId}
+                onSelect={setSelectedCategoryId}
+                label="카테고리"
+                placeholder="카테고리를 선택하세요"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                defaultValue={actionData?.values?.category_id as string}
-              >
-                <option value="">카테고리 선택</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.icon} {category.name}
-                  </option>
-                ))}
-              </select>
+                searchable
+                variant="default"
+              />
+              {/* Form 전송용 hidden input */}
+              {selectedCategoryId && (
+                <input
+                  type="hidden"
+                  name="category_id"
+                  value={selectedCategoryId}
+                />
+              )}
             </div>
 
             {/* 별점 */}
@@ -359,7 +433,9 @@ export default function RegisterPlace() {
               </div>
 
               {/* 선택된 정보를 hidden input으로 전송 */}
-              <input type="hidden" name="selectedTimeSlot" value={selectedTimeSlot || ''} />
+              {selectedTimeSlot && (
+                <input type="hidden" name="selectedTimeSlot" value={selectedTimeSlot} />
+              )}
               <input type="hidden" name="selectedPeriod" value={selectedPeriod} />
             </div>
 
@@ -399,7 +475,6 @@ export default function RegisterPlace() {
 
             {/* 이미지 업로드 */}
             <ImageUpload
-              name="images"
               label="사진 (1-3장)"
               required
               maxFiles={3}
@@ -420,7 +495,7 @@ export default function RegisterPlace() {
                 {isSubmitting ? '등록 중...' : '장소 등록'}
               </Button>
             </div>
-          </Form>
+          </form>
         </div>
       </main>
     </div>
