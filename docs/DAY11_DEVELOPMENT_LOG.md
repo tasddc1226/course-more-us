@@ -107,7 +107,104 @@
 
 ---
 
+## 6. 비밀번호 재설정 SSR 에러 해결 (2025-07-03 수정)
+
+### 🐛 발생한 문제
+**에러 메시지:**
+```
+TypeError: (0 , __vite_ssr_import_5__.createSupabaseClient) is not a function
+    at ResetPasswordPage (/Users/suyoung/dev/course-more-us/app/routes/auth.reset-password.tsx:9:20)
+```
+
+**발생 상황:**
+* 사용자가 이메일로 받은 "Reset Password" 링크 클릭
+* `/auth/reset-password?code=573a97bf...` 접근 시 SSR 렌더링 실패
+* 페이지 로딩 불가 상태
+
+### 🔍 원인 분석
+**문제점:**
+* `auth.reset-password.tsx`에서 컴포넌트 최상위에 `createSupabaseClient()` 호출
+* 클라이언트 전용 함수가 서버 사이드 렌더링 시에도 실행
+* 다른 auth 페이지들(`auth.login.tsx` 등)과 다른 패턴 사용
+
+**패턴 차이:**
+| 파일 | 사용 패턴 | 문제 |
+|------|-----------|------|
+| `auth.login.tsx` | 서버 사이드 (`createSupabaseServerClient`) | ✅ 정상 |
+| `auth.reset-password.tsx` | 클라이언트 사이드 (`createSupabaseClient`) | ❌ SSR 에러 |
+
+### 🔧 해결 방법
+**1. 서버 사이드 패턴으로 완전 전환:**
+```typescript
+// Before (클라이언트 패턴)
+import { createSupabaseClient } from '~/lib/supabase.client'
+const supabase = createSupabaseClient() // SSR 에러 발생
+
+// After (서버 패턴)
+import { createSupabaseServerClient } from '~/lib/supabase.server'
+// loader/action 함수에서 처리
+```
+
+**2. 구조 변경:**
+* **loader 함수**: 세션 검증을 서버에서 처리
+* **action 함수**: 비밀번호 업데이트를 서버에서 처리  
+* **컴포넌트**: Form 방식으로 서버에 제출
+
+**3. 구현 상세:**
+```typescript
+export async function loader({ request }: LoaderFunctionArgs) {
+  const response = new Response()
+  const supabase = createSupabaseServerClient(request, response)
+  
+  // 세션 검증
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error || !session) {
+    return redirect(`${ROUTES.LOGIN}?error=session_expired`)
+  }
+  
+  return json({ hasValidSession: true }, { headers: response.headers })
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData()
+  const newPassword = formData.get('newPassword') as string
+  // ... 검증 로직
+  
+  const response = new Response()
+  const supabase = createSupabaseServerClient(request, response)
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  
+  if (error) return json({ error: error.message }, { status: 400 })
+  return redirect(`${ROUTES.LOGIN}?message=password_reset_success`)
+}
+```
+
+### ✅ 개선 효과
+**보안 강화:**
+* 모든 인증 로직을 서버에서 처리
+* 세션 검증을 클라이언트가 아닌 서버에서 수행
+* 민감한 데이터 처리의 서버 사이드 보장
+
+**일관성 확보:**
+* 모든 auth 페이지가 동일한 서버 사이드 패턴 사용
+* 코드 유지보수성 향상
+* 예측 가능한 동작 패턴
+
+**사용자 경험:**
+* SSR 에러 완전 해결
+* 비밀번호 재설정 기능 정상 동작
+* 세션 만료 시 자동 리다이렉트
+
+### 🧪 테스트 플로우 (수정 후)
+1. **이메일 요청** → `auth.forgot-password.tsx` ✅
+2. **이메일 링크 클릭** → `auth.reset-password.tsx` (SSR 정상) ✅
+3. **새 비밀번호 입력** → 서버에서 안전하게 처리 ✅
+4. **성공 시** → 로그인 페이지로 자동 리다이렉트 ✅
+
+---
+
 ## 다음 작업 후보
 * 이메일 템플릿 커스터마이징
 * 탈퇴 사유 카테고리화 및 더 상세한 분석
 * 사용자 복구 프로세스 개선
+* auth 페이지들의 에러 처리 표준화
