@@ -3,7 +3,6 @@ import { compressImage, formatFileSize, isImageFile, createImagePreview, revokeI
 import { Button } from '~/components/ui'
 
 interface ImageUploadProps {
-  name: string
   label: string
   required?: boolean
   maxFiles?: number
@@ -20,7 +19,6 @@ interface ImagePreview {
 }
 
 export default function ImageUpload({
-  name,
   label,
   required = false,
   maxFiles = 3,
@@ -238,30 +236,7 @@ export default function ImageUpload({
         </div>
       )}
 
-      {/* Hidden inputs for form submission */}
-      {previews.map((preview, index) => {
-        if (!preview.compressed) return null
-        
-        return (
-          <input
-            key={`compressed-${index}`}
-            type="file"
-            name={name}
-            className="hidden"
-            ref={(input) => {
-              if (input && preview.compressed) {
-                try {
-                  const dataTransfer = new DataTransfer()
-                  dataTransfer.items.add(preview.compressed)
-                  input.files = dataTransfer.files
-                } catch (error) {
-                  // 압축된 파일 설정 실패 시 무시
-                }
-              }
-            }}
-          />
-        )
-      })}
+      {/* 이미지는 부모 컴포넌트의 커스텀 핸들러에서 처리됩니다 */}
 
       <p className="text-xs text-gray-500 mt-2">
         • 최대 {maxFiles}장까지 업로드 가능합니다<br/>

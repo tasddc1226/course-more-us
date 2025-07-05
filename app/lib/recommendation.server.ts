@@ -113,11 +113,11 @@ export async function getAdvancedRecommendations(
 
 async function fetchFilteredPlaces(
   request: Request,
-  { regionId, timeSlotIds }: AdvancedRecommendationRequest,
+  { regionId, timeSlotIds, priceMin, priceMax, minRating }: AdvancedRecommendationRequest,
 ) {
   const supabase = createSupabaseServerClient(request)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('places')
     .select(
       `*,
@@ -128,6 +128,23 @@ async function fetchFilteredPlaces(
     .eq('region_id', regionId)
     .eq('is_active', true)
     .in('place_time_slots.time_slot_id', timeSlotIds)
+
+  // 최소 가격대 필터 적용 (사용자가 명시적으로 제공한 경우에만)
+  if (priceMin !== undefined) {
+    query = query.gte('price_range', priceMin)
+  }
+
+  // 최대 가격대 필터 적용 (사용자가 명시적으로 제공한 경우에만)
+  if (priceMax !== undefined) {
+    query = query.lte('price_range', priceMax)
+  }
+
+  // 최소 평점 필터 (사용자가 명시적으로 제공한 경우에만)
+  if (minRating !== undefined) {
+    query = query.gte('rating', minRating)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
   
