@@ -69,34 +69,23 @@ export async function createUserPlaceFromLocation(
     selectedPeriod?: 'weekday' | 'weekend';
   }
 ) {
-  console.log('createUserPlaceFromLocation 시작')
-  console.log('받은 데이터:', placeData)
-  
   const supabase = createSupabaseServerClient(request);
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    console.error('인증 오류:', authError)
     throw new Error("인증이 필요합니다");
   }
-  
-  console.log('사용자 인증 성공:', user.id)
 
   // 하루 3개 제한 체크
-  console.log('일일 제한 체크 중...')
   const todayCount = await getTodayPlaceCount(request);
-  console.log('오늘 등록 수:', todayCount)
   if (todayCount >= 3) {
     throw new Error("하루 최대 3개까지만 장소를 등록할 수 있습니다");
   }
 
   // 지역 찾기 또는 생성
-  console.log('지역 찾기/생성 중...', placeData.regionName)
   const region = await findOrCreateRegion(request, placeData.regionName);
-  console.log('지역 정보:', region)
 
   // 장소 등록
-  console.log('장소 DB 삽입 시작...')
   const placeInsertData = {
     name: placeData.placeName,
     address: placeData.address,
@@ -112,7 +101,6 @@ export async function createUserPlaceFromLocation(
     rating: placeData.rating,
     price_range: 2
   }
-  console.log('삽입할 장소 데이터:', placeInsertData)
   
   const { data: place, error: placeError } = await supabase
     .from('places')
@@ -124,11 +112,8 @@ export async function createUserPlaceFromLocation(
     console.error('장소 DB 삽입 오류:', placeError);
     throw new Error("장소 등록 중 오류가 발생했습니다");
   }
-  
-  console.log('장소 등록 성공:', place)
 
   // 이미지 등록
-  console.log('이미지 등록 시작, 이미지 수:', placeData.images.length)
   if (placeData.images.length > 0) {
     const imageInserts = placeData.images.map((imageUrl, index) => ({
       place_id: place.id,
@@ -136,8 +121,6 @@ export async function createUserPlaceFromLocation(
       display_order: index + 1,
       is_primary: index === 0
     }));
-    
-    console.log('삽입할 이미지 데이터:', imageInserts)
 
     const { error: imageError } = await supabaseAdmin
       .from('place_images')
@@ -146,13 +129,10 @@ export async function createUserPlaceFromLocation(
     if (imageError) {
       console.error('이미지 등록 오류:', imageError);
       // 이미지 오류는 장소 등록을 실패시키지 않음
-    } else {
-      console.log('이미지 등록 성공')
     }
   }
 
   // 시간대 정보 처리
-  console.log('시간대 정보 처리 중...', { selectedTimeSlot: placeData.selectedTimeSlot, selectedPeriod: placeData.selectedPeriod })
   if (placeData.selectedTimeSlot && placeData.selectedPeriod) {
     // time_slots 테이블에서 해당 시간대의 start_time, end_time 조회
     const { data: timeSlot, error: timeSlotError } = await supabase
@@ -166,7 +146,6 @@ export async function createUserPlaceFromLocation(
     }
 
     if (!timeSlotError && timeSlot) {
-      console.log('시간대 정보:', timeSlot)
       // start_time~end_time 형식으로 운영시간 생성
       const timeRange = `${timeSlot.start_time}~${timeSlot.end_time}`;
       
@@ -180,8 +159,6 @@ export async function createUserPlaceFromLocation(
           operatingHours[day] = timeRange;
         });
       }
-
-      console.log('운영시간 설정:', operatingHours)
 
       // 장소의 운영시간 업데이트
       const { error: updateError } = await supabase
@@ -203,13 +180,9 @@ export async function createUserPlaceFromLocation(
 
       if (timeSlotInsertError) {
         console.error('시간대 정보 삽입 오류:', timeSlotInsertError);
-      } else {
-        console.log('시간대 정보 등록 성공')
       }
     }
   }
-
-  console.log('createUserPlaceFromLocation 완료!')
   return place;
 }
 
