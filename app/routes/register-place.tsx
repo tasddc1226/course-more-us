@@ -233,8 +233,8 @@ export default function RegisterPlace() {
     const formData = new FormData(form)
     
     // 압축된 이미지들을 FormData에 추가
-    compressedImages.forEach((file, index) => {
-      formData.append('images', file, `compressed-image-${index}.jpg`)
+    compressedImages.forEach((file) => {
+      formData.append('images', file, file.name)
     })
     
     // Remix fetcher로 제출
@@ -475,7 +475,6 @@ export default function RegisterPlace() {
 
             {/* 이미지 업로드 */}
             <ImageUpload
-              name="images"
               label="사진 (1-3장)"
               required
               maxFiles={3}

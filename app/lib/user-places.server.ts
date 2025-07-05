@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "~/lib/supabase.server";
+import { createSupabaseServerClient, supabaseAdmin } from "~/lib/supabase.server";
 import { findOrCreateRegion } from "~/lib/data.server";
 import type { UserPlaceFormData } from "~/types/forms";
 import { createClient } from "@supabase/supabase-js";
@@ -139,7 +139,7 @@ export async function createUserPlaceFromLocation(
     
     console.log('삽입할 이미지 데이터:', imageInserts)
 
-    const { error: imageError } = await supabase
+    const { error: imageError } = await supabaseAdmin
       .from('place_images')
       .insert(imageInserts);
 
