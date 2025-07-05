@@ -1,25 +1,16 @@
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node'
-import { Form, useActionData } from '@remix-run/react'
+import { json, redirect, type ActionFunctionArgs } from '@remix-run/node'
+import { Form, useActionData, Link } from '@remix-run/react'
 import { useState, useEffect } from 'react'
 import { Button, Input, ErrorMessage } from '~/components/ui'
 import { AuthLayout } from '~/components/common'
 import { createSupabaseServerClient } from '~/lib/supabase.server'
 import { ROUTES } from '~/constants/routes'
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const response = new Response()
-  const supabase = createSupabaseServerClient(request, response)
-  
-  // URL에서 세션 정보 확인
-  const { data: { session }, error } = await supabase.auth.getSession()
-  
-  if (error || !session) {
-    // 세션이 없으면 로그인 페이지로 리다이렉트
-    return redirect(`${ROUTES.LOGIN}?error=session_expired`)
-  }
-  
-  return json({ hasValidSession: true }, {
-    headers: response.headers
+export async function loader() {
+  // 비밀번호 재설정 페이지는 특별한 경우로 세션 체크 없이 표시
+  // 실제 인증은 action에서 updateUser() 시 Supabase가 자동으로 검증
+  return json({ 
+    message: '비밀번호 재설정 페이지입니다.' 
   })
 }
 
@@ -43,9 +34,22 @@ export async function action({ request }: ActionFunctionArgs) {
   const response = new Response()
   const supabase = createSupabaseServerClient(request, response)
   
+  // 비밀번호 재설정 플로우에서는 updateUser() 호출 시 Supabase가 자동 검증
+  // 먼저 getUser() 호출 없이 바로 updateUser() 시도
   const { error } = await supabase.auth.updateUser({ password: newPassword })
 
   if (error) {
+    // 구체적인 에러 메시지 처리
+    if (error.message.includes('session_not_found') || error.message.includes('Auth session missing')) {
+      return json({ 
+        error: '인증이 만료되었습니다. 비밀번호 재설정을 다시 요청해주세요.' 
+      }, { status: 401 })
+    }
+    if (error.message.includes('Invalid login credentials')) {
+      return json({ 
+        error: '비밀번호 재설정 링크가 만료되었습니다. 새로운 링크를 요청해주세요.' 
+      }, { status: 401 })
+    }
     return json({ error: error.message }, { status: 400 })
   }
 
@@ -61,6 +65,28 @@ export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [countdown, setCountdown] = useState(0)
+  const [urlError, setUrlError] = useState<string | null>(null)
+
+  // URL 해시에서 Supabase 에러 확인
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash) {
+        const params = new URLSearchParams(hash.substring(1))
+        const error = params.get('error')
+        const errorCode = params.get('error_code')
+        const errorDescription = params.get('error_description')
+        
+        if (error) {
+          if (errorCode === 'otp_expired') {
+            setUrlError('비밀번호 재설정 링크가 만료되었습니다. 새로운 링크를 요청해주세요.')
+          } else {
+            setUrlError(errorDescription || `인증 오류: ${error}`)
+          }
+        }
+      }
+    }
+  }, [])
 
   // 성공 메시지 카운트다운 (실제로는 리다이렉트되지만 혹시를 위해)
   useEffect(() => {
@@ -80,7 +106,7 @@ export default function ResetPasswordPage() {
   }, [actionData])
 
   // 입력 필드 유효성 검사
-  const isFormValid = newPassword.trim() !== '' && confirmPassword.trim() !== ''
+  const isFormValid = newPassword.trim() !== '' && confirmPassword.trim() !== '' && !urlError
 
   return (
     <AuthLayout title="비밀번호 재설정" subtitle="새로운 비밀번호를 입력해주세요">
@@ -105,6 +131,19 @@ export default function ResetPasswordPage() {
         />
 
         {/* 에러 메시지 */}
+        {urlError && (
+          <div className="space-y-3">
+            <ErrorMessage message={urlError} />
+            <div className="text-center">
+              <Link 
+                to={ROUTES.FORGOT_PASSWORD} 
+                className="text-purple-600 hover:text-purple-800 text-sm underline"
+              >
+                새로운 비밀번호 재설정 링크 요청하기
+              </Link>
+            </div>
+          </div>
+        )}
         {actionData?.error && <ErrorMessage message={actionData.error} />}
 
         {/* 성공 메시지 */}
