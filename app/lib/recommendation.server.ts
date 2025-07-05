@@ -117,7 +117,7 @@ async function fetchFilteredPlaces(
 ) {
   const supabase = createSupabaseServerClient(request)
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('places')
     .select(
       `*,
@@ -128,11 +128,20 @@ async function fetchFilteredPlaces(
     .eq('region_id', regionId)
     .eq('is_active', true)
     .in('place_time_slots.time_slot_id', timeSlotIds)
-    // 가격대 필터 적용 (옵션)
-    .gte('price_range', priceRange ? priceRange[0] : 1)
-    .lte('price_range', priceRange ? priceRange[1] : 5)
-    // 최소 평점 필터 (옵션)
-    .gte('rating', minRating ?? 0)
+
+  // 가격대 필터 적용 (사용자가 명시적으로 제공한 경우에만)
+  if (priceRange) {
+    query = query
+      .gte('price_range', priceRange[0])
+      .lte('price_range', priceRange[1])
+  }
+
+  // 최소 평점 필터 (사용자가 명시적으로 제공한 경우에만)
+  if (minRating !== undefined) {
+    query = query.gte('rating', minRating)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
   
