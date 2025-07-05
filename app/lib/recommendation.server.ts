@@ -113,7 +113,7 @@ export async function getAdvancedRecommendations(
 
 async function fetchFilteredPlaces(
   request: Request,
-  { regionId, timeSlotIds, priceRange, minRating }: AdvancedRecommendationRequest,
+  { regionId, timeSlotIds, priceMin, priceMax, minRating }: AdvancedRecommendationRequest,
 ) {
   const supabase = createSupabaseServerClient(request)
 
@@ -129,11 +129,14 @@ async function fetchFilteredPlaces(
     .eq('is_active', true)
     .in('place_time_slots.time_slot_id', timeSlotIds)
 
-  // 가격대 필터 적용 (사용자가 명시적으로 제공한 경우에만)
-  if (priceRange) {
-    query = query
-      .gte('price_range', priceRange[0])
-      .lte('price_range', priceRange[1])
+  // 최소 가격대 필터 적용 (사용자가 명시적으로 제공한 경우에만)
+  if (priceMin !== undefined) {
+    query = query.gte('price_range', priceMin)
+  }
+
+  // 최대 가격대 필터 적용 (사용자가 명시적으로 제공한 경우에만)
+  if (priceMax !== undefined) {
+    query = query.lte('price_range', priceMax)
   }
 
   // 최소 평점 필터 (사용자가 명시적으로 제공한 경우에만)

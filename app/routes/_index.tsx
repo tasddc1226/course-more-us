@@ -164,20 +164,13 @@ export async function action({ request }: ActionFunctionArgs) {
     }, { status: 400 });
   }
 
-  // price range sanity check (min > max 인 경우 스왑)
-  let priceRange: [number, number] | undefined = undefined;
-  if (priceMin !== undefined || priceMax !== undefined) {
-    const min = priceMin ?? 1;
-    const max = priceMax ?? 5;
-    priceRange = min <= max ? [min, max] : [max, min];
-  }
-
   try {
     const recommendations = await getAdvancedRecommendations(request, {
       regionId,
       date,
       timeSlotIds,
-      priceRange,
+      priceMin,
+      priceMax,
       minRating,
       maxResults: 12,
       diversityWeight: 0.3
