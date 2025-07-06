@@ -62,10 +62,7 @@ export async function action({ request }: ActionFunctionArgs) {
     },
   })
 
-  console.log('SignUp Response:', { data, error })
-
   if (error) {
-    console.error('SignUp Error:', error)
     return json({ error: error.message }, { status: 400 })
   }
 
