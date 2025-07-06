@@ -5,11 +5,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
   const error = url.searchParams.get('error')
+  const errorCode = url.searchParams.get('error_code')
+  const errorDescription = url.searchParams.get('error_description')
   const marketingAgreed = url.searchParams.get('marketing_agreed') === 'true'
   const type = url.searchParams.get('type') // 'signup' for email verification
 
-  // OAuth 에러가 있는 경우
+  // 에러가 있는 경우 - 이메일 인증 관련 에러 처리
   if (error) {
+    console.log('Callback error:', { error, errorCode, errorDescription, type })
+    
+    // 이메일 인증 관련 에러 처리
+    if (type === 'signup' && (errorCode === 'otp_expired' || error === 'access_denied')) {
+      return redirect(`/auth/verify-email?error=expired&email=${encodeURIComponent(url.searchParams.get('email') || '')}`)
+    }
+    
     return redirect(`/auth/login?error=${encodeURIComponent(error)}`)
   }
 

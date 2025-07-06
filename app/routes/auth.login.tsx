@@ -79,6 +79,7 @@ export default function Login() {
     if (actionData?.error) return actionData.error
     if (oauthError === 'session_expired') return '세션이 만료되었습니다. 다시 로그인해주세요.'
     if (oauthError === 'callback_error') return '로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.'
+    if (oauthError === 'access_denied') return '이메일 인증 링크가 만료되거나 잘못되었습니다.'
     if (oauthError) return `OAuth 로그인 오류: ${oauthError}`
     return null
   }

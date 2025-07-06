@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from '@remix-run/react'
-import { Button } from '~/components/ui'
+import { Button, Input } from '~/components/ui'
 import { AuthLayout } from '~/components/common'
 import { createSupabaseClient } from '~/lib/supabase.client'
 import { ROUTES } from '~/constants/routes'
@@ -12,9 +12,20 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(60)
   const [canResend, setCanResend] = useState(false)
+  const [showManualInput, setShowManualInput] = useState(false)
+  const [manualEmail, setManualEmail] = useState('')
 
   const email = searchParams.get('email') || ''
+  const errorType = searchParams.get('error')
   const supabase = createSupabaseClient()
+
+  // URL에서 에러 파라미터가 있는 경우 초기 에러 메시지 설정
+  useEffect(() => {
+    if (errorType === 'expired') {
+      setError('이메일 인증 링크가 만료되었습니다. 새로운 인증 링크를 요청해주세요.')
+      setCanResend(true) // 즉시 재전송 가능하도록 설정
+    }
+  }, [errorType])
 
   // 카운트다운 타이머
   useEffect(() => {
@@ -28,8 +39,10 @@ export default function VerifyEmailPage() {
     }
   }, [countdown])
 
-  const handleResendEmail = async () => {
-    if (!email) {
+  const handleResendEmail = async (emailToUse?: string) => {
+    const targetEmail = emailToUse || email
+    
+    if (!targetEmail) {
       setError('이메일 정보를 찾을 수 없습니다.')
       return
     }
@@ -41,13 +54,13 @@ export default function VerifyEmailPage() {
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
+        email: targetEmail,
       })
 
       if (error) {
         setError(error.message)
       } else {
-        setMessage('인증 이메일이 다시 전송되었습니다.')
+        setMessage(`${targetEmail}로 인증 이메일이 다시 전송되었습니다.`)
         setCountdown(60)
         setCanResend(false)
       }
@@ -76,9 +89,34 @@ export default function VerifyEmailPage() {
           <p className="text-sm text-gray-600 mb-4">
             회원가입을 완료하기 위해 다음 이메일로 전송된 인증 링크를 클릭해주세요:
           </p>
-          <p className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-2 rounded border">
-            {email}
-          </p>
+          {email ? (
+            <p className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-2 rounded border">
+              {email}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                이메일 주소를 입력해주세요:
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  placeholder="이메일 주소"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => handleResendEmail(manualEmail)}
+                  disabled={!manualEmail || isResending}
+                  variant="primary"
+                  className="whitespace-nowrap"
+                >
+                  {isResending ? '전송 중...' : '인증 이메일 전송'}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -102,13 +140,48 @@ export default function VerifyEmailPage() {
 
           <div className="flex flex-col space-y-3">
             <Button
-              onClick={handleResendEmail}
-              disabled={!canResend || isResending}
+              onClick={() => handleResendEmail(email || manualEmail)}
+              disabled={!canResend || isResending || (!email && !manualEmail)}
               variant="outline"
               className="w-full"
             >
               {isResending ? '전송 중...' : canResend ? '인증 이메일 재전송' : `재전송 (${countdown}초 후)`}
             </Button>
+
+            {email && (
+              <Button
+                onClick={() => setShowManualInput(!showManualInput)}
+                variant="outline"
+                className="w-full text-sm"
+              >
+                다른 이메일로 재전송하기
+              </Button>
+            )}
+
+            {(showManualInput && email) && (
+              <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  다른 이메일 주소로 인증 링크를 받고 싶다면:
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={manualEmail}
+                    onChange={(e) => setManualEmail(e.target.value)}
+                    placeholder="다른 이메일 주소"
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => handleResendEmail(manualEmail)}
+                    disabled={!manualEmail || isResending}
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    전송
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <Link
               to={ROUTES.LOGIN}
