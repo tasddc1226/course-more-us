@@ -58,7 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
     email,
     password,
     options: {
-      emailRedirectTo: `${url.origin}/auth/callback?type=signup&marketing_agreed=${marketingAgreed}`,
+      emailRedirectTo: `${url.origin}/auth/email-confirm?type=signup&marketing_agreed=${marketingAgreed}`,
     },
   })
 
