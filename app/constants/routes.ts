@@ -10,6 +10,7 @@ export const ROUTES = {
   TERMS: '/auth/terms',
   RESET_PASSWORD: '/auth/reset-password',
   FORGOT_PASSWORD: '/auth/forgot-password',
+  VERIFY_EMAIL: '/auth/verify-email',
   
   // 약관 및 정책
   SERVICE_TERMS: '/terms',
@@ -47,7 +48,8 @@ export const AUTH_ROUTES = [
   ROUTES.CALLBACK,
   ROUTES.TERMS,
   ROUTES.RESET_PASSWORD,
-  ROUTES.FORGOT_PASSWORD
+  ROUTES.FORGOT_PASSWORD,
+  ROUTES.VERIFY_EMAIL
 ] as const;
 
 export const PUBLIC_ROUTES = [

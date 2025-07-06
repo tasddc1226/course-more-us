@@ -6,6 +6,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const code = url.searchParams.get('code')
   const error = url.searchParams.get('error')
   const marketingAgreed = url.searchParams.get('marketing_agreed') === 'true'
+  const type = url.searchParams.get('type') // 'signup' for email verification
 
   // OAuth 에러가 있는 경우
   if (error) {
@@ -34,7 +35,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
       
       if (data.user) {
-        // 기존 사용자의 동의 정보 확인
+        // 이메일 인증을 통한 회원가입 완료인 경우
+        if (type === 'signup') {
+          // 이메일 인증 완료 후 약관 동의 페이지로 이동
+          return redirect('/auth/terms?provider=email&user_authenticated=true' + 
+            (marketingAgreed ? '&marketing_agreed=true' : ''), {
+            headers: response.headers,
+          })
+        }
+        
+        // 기존 사용자의 동의 정보 확인 (소셜 로그인)
         try {
           const { data: existingAgreements, error: agreementError } = await supabase
             .from('user_agreements')

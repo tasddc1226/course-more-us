@@ -14,7 +14,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (user) {
     return redirect('/')
   }
-  return json({})
+  
+  const url = new URL(request.url);
+  const message = url.searchParams.get('message');
+  const emailVerified = url.searchParams.get('email_verified');
+  
+  return json({ message, emailVerified })
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -51,11 +56,23 @@ export default function Login() {
   const actionData = useActionData<typeof action>()
   const [searchParams] = useSearchParams()
   const oauthError = searchParams.get('error')
+  const message = searchParams.get('message')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   // 로그인 버튼 활성화 조건
   const isLoginButtonEnabled = email.trim() !== '' && password.trim() !== ''
+
+  // 성공 메시지 처리
+  const getSuccessMessage = () => {
+    if (message === 'password_reset_success') {
+      return '비밀번호가 성공적으로 변경되었습니다! 새로운 비밀번호로 로그인해주세요.'
+    }
+    if (message === 'email_verified') {
+      return '이메일 인증이 완료되었습니다! 로그인하여 서비스를 이용해보세요.'
+    }
+    return null
+  }
 
   // 오류 메시지 처리
   const getErrorMessage = () => {
@@ -66,6 +83,7 @@ export default function Login() {
     return null
   }
 
+  const successMessage = getSuccessMessage()
   const errorMessage = getErrorMessage()
 
   return (
@@ -95,6 +113,14 @@ export default function Login() {
           required
           className="px-4 py-4 bg-gray-100 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white focus:border-purple-300 transition-all"
         />
+
+        {/* 성공 메시지 */}
+        {successMessage && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+            <span className="text-green-500 text-lg">✅</span>
+            <p className="text-green-600 text-sm">{successMessage}</p>
+          </div>
+        )}
 
         {/* 에러 메시지 */}
         {errorMessage && <ErrorMessage message={errorMessage} />}

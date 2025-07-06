@@ -57,16 +57,25 @@ export async function action({ request }: ActionFunctionArgs) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${url.origin}/auth/callback?type=signup&marketing_agreed=${marketingAgreed}`,
+    },
   })
 
   if (error) {
     return json({ error: error.message }, { status: 400 })
   }
 
-  // 회원가입 성공 시 동의 정보 저장 시도
+  // 회원가입 성공 시 이메일 인증 대기 페이지로 리다이렉트
   if (data.user) {
+    // 이메일 인증이 필요한 경우 (user는 생성되지만 email_confirmed_at이 null)
+    if (!data.user.email_confirmed_at) {
+      return redirect(`${ROUTES.VERIFY_EMAIL}?email=${encodeURIComponent(email)}&marketing_agreed=${marketingAgreed}`)
+    }
+    
+    // 이메일 인증이 불필요한 경우 (개발 환경 등)
     try {
-      // 임시 인증 request 생성 (실제로는 이메일 확인 후 로그인 시 저장됨)
+      // 동의 정보 저장 시도
     } catch (agreementError) {
       // 동의 정보 저장 예약 실패 시 에러 로깅
     }

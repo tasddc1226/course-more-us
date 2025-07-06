@@ -33,8 +33,8 @@ export async function action({ request }: ActionFunctionArgs) {
   const url = new URL(request.url);
   const userAuthenticated = url.searchParams.get('user_authenticated') === 'true';
   
-  if (provider === 'kakao' && userAuthenticated) {
-    // 이미 인증된 카카오 사용자의 경우 동의 정보 저장 후 홈으로 이동
+  if ((provider === 'kakao' || provider === 'email') && userAuthenticated) {
+    // 이미 인증된 사용자의 경우 (카카오 또는 이메일) 동의 정보 저장 후 홈으로 이동
     try {
       await createInitialAgreements(
         request,
@@ -42,8 +42,9 @@ export async function action({ request }: ActionFunctionArgs) {
         true, // privacy_agreed  
         marketingAgreed // marketing_agreed
       )
-          } catch (agreementError) {
-        // 동의 정보 저장 실패 시 에러 로깅
+    } catch (agreementError) {
+      // 동의 정보 저장 실패 시 에러 로깅
+      console.error('Agreement creation failed:', agreementError);
     }
     return redirect(ROUTES.HOME);
   } else if (provider === 'kakao') {
@@ -92,7 +93,9 @@ export default function AuthTerms() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">서비스 이용 동의</h1>
           <p className="text-white/90">
-            {provider === 'kakao' ? '카카오로 회원가입하기 전' : '회원가입하기 전'} 약관에 동의해주세요
+            {provider === 'kakao' ? '카카오로 회원가입하기 전' : 
+             provider === 'email' ? '이메일 회원가입을 완료하기 전' : 
+             '회원가입하기 전'} 약관에 동의해주세요
           </p>
         </div>
 
