@@ -94,6 +94,55 @@ export default function Signup() {
   const actionData = useActionData<typeof action>()
   const navigate = useNavigate()
   const [countdown, setCountdown] = useState(3)
+  
+  // 이메일 중복확인 상태
+  const [email, setEmail] = useState('')
+  const [emailCheckStatus, setEmailCheckStatus] = useState<'unchecked' | 'checking' | 'available' | 'unavailable'>('unchecked')
+  const [emailCheckMessage, setEmailCheckMessage] = useState('')
+
+  // 이메일 중복확인 함수
+  const checkEmailAvailability = async () => {
+    if (!email || !isValidEmail(email)) {
+      setEmailCheckStatus('unchecked')
+      setEmailCheckMessage('올바른 이메일 형식을 입력해주세요.')
+      return
+    }
+
+    setEmailCheckStatus('checking')
+    setEmailCheckMessage('이메일 확인 중...')
+
+    try {
+      const formData = new FormData()
+      formData.append('email', email)
+
+      const response = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (result.available) {
+        setEmailCheckStatus('available')
+        setEmailCheckMessage(result.message)
+      } else {
+        setEmailCheckStatus('unavailable')
+        setEmailCheckMessage(result.message)
+      }
+    } catch (error) {
+      setEmailCheckStatus('unchecked')
+      setEmailCheckMessage('이메일 확인 중 오류가 발생했습니다.')
+    }
+  }
+
+  // 이메일 입력 시 중복확인 상태 초기화
+  const handleEmailChange = (value: string) => {
+    setEmail(value)
+    if (emailCheckStatus !== 'unchecked') {
+      setEmailCheckStatus('unchecked')
+      setEmailCheckMessage('')
+    }
+  }
 
   // 회원가입 성공 시 카운트다운 및 리다이렉트
   useEffect(() => {
@@ -145,16 +194,50 @@ export default function Signup() {
       </div>
 
       <Form className="space-y-6" method="post">
+        {/* 이메일 값을 Form에 전송하기 위한 hidden input */}
+        <input type="hidden" name="email" value={email} />
+        
         <div className="space-y-4">
-          <Input
-            id="email-address"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            placeholder="이메일 주소"
-            label="이메일"
-          />
+          <div className="space-y-2">
+            <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
+              이메일
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="email-address"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                placeholder="이메일 주소"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={checkEmailAvailability}
+                disabled={!email || !isValidEmail(email) || emailCheckStatus === 'checking'}
+                variant="outline"
+                className="whitespace-nowrap"
+              >
+                {emailCheckStatus === 'checking' ? '확인중...' : '중복확인'}
+              </Button>
+            </div>
+            
+            {/* 이메일 중복확인 메시지 */}
+            {emailCheckMessage && (
+              <div className={`text-sm flex items-center gap-2 ${
+                emailCheckStatus === 'available' ? 'text-green-600' : 
+                emailCheckStatus === 'unavailable' ? 'text-red-600' : 
+                'text-gray-500'
+              }`}>
+                {emailCheckStatus === 'available' && <span className="text-green-500">✓</span>}
+                {emailCheckStatus === 'unavailable' && <span className="text-red-500">✗</span>}
+                {emailCheckStatus === 'checking' && <span className="text-blue-500">🔄</span>}
+                {emailCheckMessage}
+              </div>
+            )}
+          </div>
           
           <Input
             id="password"
@@ -193,9 +276,17 @@ export default function Signup() {
           type="submit"
           variant="primary"
           className="w-full"
+          disabled={emailCheckStatus !== 'available'}
         >
           회원가입
         </Button>
+        
+        {/* 이메일 중복확인이 완료되지 않은 경우 안내 */}
+        {emailCheckStatus !== 'available' && (
+          <p className="text-sm text-gray-500 text-center">
+            이메일 중복확인을 완료해주세요.
+          </p>
+        )}
       </Form>
     </AuthLayout>
   )
