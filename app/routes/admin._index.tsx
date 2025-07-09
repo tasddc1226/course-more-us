@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, Link, Form } from "@remix-run/react";
-import { requireAdmin, getAllPlaces } from "~/lib/admin.server";
+import { requireAdmin, getAllPlaces, getAccountDeletionStats } from "~/lib/admin.server";
 import { Button } from "~/components/ui";
 import { PageHeader } from "~/components/common";
 import { ROUTES } from "~/constants/routes";
@@ -16,17 +16,19 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   const { user } = await requireAdmin(request);
   const places = await getAllPlaces(request);
+  const deletionStats = await getAccountDeletionStats(request);
   
   return json({ 
     user,
     placesCount: places.length,
     activePlacesCount: places.filter(p => p.is_active).length,
-    partnershipPlacesCount: places.filter(p => p.is_partnership).length
+    partnershipPlacesCount: places.filter(p => p.is_partnership).length,
+    deletionStats
   });
 }
 
 export default function AdminDashboard() {
-  const { user, placesCount, activePlacesCount, partnershipPlacesCount } = useLoaderData<typeof loader>();
+  const { user, placesCount, activePlacesCount, partnershipPlacesCount, deletionStats } = useLoaderData<typeof loader>();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -210,6 +212,41 @@ export default function AdminDashboard() {
             </div>
           </Link>
         </div>
+
+        {/* 탈퇴 사유 통계 */}
+        {deletionStats.totalDeletions > 0 && (
+          <div className="mt-8">
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                  회원 탈퇴 사유 통계 (총 {deletionStats.totalDeletions}건)
+                </h3>
+                <div className="space-y-3">
+                  {deletionStats.reasonStats.map((stat, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-900">
+                            {stat.reason}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {stat.count}건 ({stat.percentage}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-red-500 h-2 rounded-full" 
+                            style={{ width: `${stat.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 최근 활동 */}
         <div className="mt-8">

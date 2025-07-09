@@ -8,6 +8,10 @@ export const ROUTES = {
   LOGOUT: '/auth/logout',
   CALLBACK: '/auth/callback',
   TERMS: '/auth/terms',
+  RESET_PASSWORD: '/auth/reset-password',
+  FORGOT_PASSWORD: '/auth/forgot-password',
+  VERIFY_EMAIL: '/auth/verify-email',
+  EMAIL_CONFIRM: '/auth/email-confirm',
   
   // 약관 및 정책
   SERVICE_TERMS: '/terms',
@@ -43,7 +47,11 @@ export const AUTH_ROUTES = [
   ROUTES.SIGNUP,
   ROUTES.LOGOUT,
   ROUTES.CALLBACK,
-  ROUTES.TERMS
+  ROUTES.TERMS,
+  ROUTES.RESET_PASSWORD,
+  ROUTES.FORGOT_PASSWORD,
+  ROUTES.VERIFY_EMAIL,
+  ROUTES.EMAIL_CONFIRM
 ] as const;
 
 export const PUBLIC_ROUTES = [
