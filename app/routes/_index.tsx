@@ -3,18 +3,17 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, Link, Form, useNavigation } from "@remix-run/react";
 import { getUser } from "~/lib/auth.server";
 import { getRegions, getTimeSlots } from "~/lib/data.server";
-import { getAdvancedRecommendations } from "~/lib/recommendation.server";
+import { generateDateCourses } from "~/lib/course.server";
 
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType } from "~/lib/feedback.server";
 import { getUserFavoritesForPlaces, toggleFavorite } from "~/lib/favorites.server";
 
 import { Button, Calendar, Dropdown, TimeSlotSelector, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
-import type { RecommendationResponse } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
 import type { CourseGenerationResponse } from "~/types/course";
 import { SearchBar } from "~/components/common";
-import { RecommendationResults, LoadingSkeleton } from "~/components/recommendation";
+import { LoadingSkeleton } from "~/components/recommendation";
 import { CourseCard, CourseDetail } from "~/components/course";
 import { useState } from "react";
 
@@ -157,34 +156,16 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    // 코스 생성 API 호출을 위한 FormData 생성
-    const courseFormData = new FormData();
-    courseFormData.set('regionId', regionId.toString());
-    courseFormData.set('date', date);
-    timeSlotIds.forEach(id => courseFormData.append('timeSlots', id.toString()));
-
-    // 내부 API 호출
-    const courseRequest = new Request(new URL('/api/courses/generate', request.url).toString(), {
-      method: 'POST',
-      body: courseFormData,
-      headers: request.headers,
+    // 직접 코스 생성 함수 호출
+    const courseResult = await generateDateCourses(request, {
+      regionId,
+      date,
+      timeSlotIds
     });
 
-    const courseResponse = await fetch(courseRequest);
-    const courseResult = await courseResponse.json();
-
-    if (!courseResponse.ok) {
-      return json({ 
-        error: courseResult.error || '코스 생성 중 오류가 발생했습니다.',
-        courses: null,
-        userFeedbacks: null,
-        userFavorites: null
-      }, { status: courseResponse.status });
-    }
-
     // 생성된 코스에서 모든 장소 ID 추출
-    const allPlaceIds = courseResult.courses.flatMap((course: any) => 
-      course.places.map((placeInfo: any) => placeInfo.place.id)
+    const allPlaceIds = courseResult.courses.flatMap((course) => 
+      course.places.map((placeInfo) => placeInfo.place.id)
     );
 
     // 사용자 피드백, 즐겨찾기 정보 가져오기

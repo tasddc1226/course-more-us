@@ -334,6 +334,47 @@ const THEME_CONFIGS = {
 3. 인터랙티브 지도 기능
 4. 실시간 이동 시간 계산
 
+## 🚨 Phase 1 긴급 버그 수정 (2025-01-05)
+
+### 문제 상황
+코스 추천 버튼 클릭 시 다음 에러 발생:
+- `SyntaxError: Unexpected end of JSON input`
+- `Error: aborted` with `ECONNRESET`
+
+### 원인 분석
+1. **불필요한 내부 API 호출**: `_index.tsx`에서 `fetch`로 내부 API 호출
+2. **배열 변경 문제**: `course.server.ts`에서 원본 배열 직접 수정
+
+### 해결 방안
+1. **직접 함수 호출**: 내부 API 제거하고 `generateDateCourses` 직접 호출
+2. **배열 복사**: 원본 배열 보호를 위한 복사본 사용
+3. **불필요한 파일 제거**: `api.courses.generate.tsx` 삭제
+
+### 수정된 코드
+```typescript
+// AS-IS: 복잡한 내부 API 호출
+const courseRequest = new Request('/api/courses/generate', {...});
+const courseResponse = await fetch(courseRequest);
+
+// TO-BE: 직접 함수 호출
+const courseResult = await generateDateCourses(request, {
+  regionId, date, timeSlotIds
+});
+```
+
+```typescript
+// AS-IS: 원본 배열 수정
+function arrangePlacesByTimeSlots(places: RecommendedPlace[]) {
+  places.splice(selectedIndex, 1); // 원본 수정!
+}
+
+// TO-BE: 복사본 사용
+function arrangePlacesByTimeSlots(places: RecommendedPlace[]) {
+  const availablePlaces = [...places]; // 복사본 생성
+  availablePlaces.splice(selectedIndex, 1); // 복사본 수정
+}
+```
+
 ## 예상 일정
 - ✅ **Phase 1 완료**: 3-4일 → **실제 1일 완료**
 - Phase 2 (지도 통합): 2-3일

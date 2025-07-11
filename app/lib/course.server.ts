@@ -195,12 +195,15 @@ async function arrangePlacesByTimeSlots(
   const effectiveMaxTravelTime = userMaxTravelTime || maxTravelTime;
   const coursePlaces: CoursePlaceInfo[] = [];
   let previousPlace: RecommendedPlace | null = null;
+  
+  // 원본 배열을 변경하지 않기 위해 복사본 생성
+  const availablePlaces = [...places];
 
   for (let i = 0; i < timeSlots.length; i++) {
     const timeSlot = timeSlots[i];
     
     // 해당 시간대에 적합한 장소 찾기
-    const candidatePlaces = places.filter(place => 
+    const candidatePlaces = availablePlaces.filter(place => 
       place.place_time_slots?.some(pts => pts.time_slot_id === timeSlot.id)
     );
 
@@ -278,9 +281,9 @@ async function arrangePlacesByTimeSlots(
     previousPlace = selectedPlace;
     
     // 선택된 장소는 다음 선택에서 제외
-    const selectedIndex = places.findIndex(p => p.id === selectedPlace.id);
+    const selectedIndex = availablePlaces.findIndex(p => p.id === selectedPlace.id);
     if (selectedIndex > -1) {
-      places.splice(selectedIndex, 1);
+      availablePlaces.splice(selectedIndex, 1);
     }
   }
 
