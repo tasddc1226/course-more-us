@@ -8,12 +8,14 @@ import { getAdvancedRecommendations } from "~/lib/recommendation.server";
 import { getUserFeedbacksForPlaces, toggleFeedback, type FeedbackType } from "~/lib/feedback.server";
 import { getUserFavoritesForPlaces, toggleFavorite } from "~/lib/favorites.server";
 
-import { Button, Calendar, Dropdown, type DropdownOption } from "~/components/ui";
+import { Button, Calendar, Dropdown, TimeSlotSelector, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 import type { RecommendationResponse } from "~/lib/recommendation/types";
 import type { Tables } from "~/types/database.types";
+import type { CourseGenerationResponse } from "~/types/course";
 import { SearchBar } from "~/components/common";
 import { RecommendationResults, LoadingSkeleton } from "~/components/recommendation";
+import { CourseCard, CourseDetail } from "~/components/course";
 import { useState } from "react";
 
 export const meta: MetaFunction = () => {
@@ -130,25 +132,15 @@ export async function action({ request }: ActionFunctionArgs) {
     }
   }
 
-  // 추천 요청 처리
+  // 코스 추천 요청 처리
   const regionIdValue = formData.get('regionId')
   const date = formData.get('date') as string;
   const timeSlotIds = formData.getAll('timeSlots').map(id => parseInt(id as string));
 
-  // 가격대 필터 (선택)
-  const priceMinRaw = formData.get('priceMin') as string | null;
-  const priceMaxRaw = formData.get('priceMax') as string | null;
-  const priceMin = priceMinRaw ? parseInt(priceMinRaw) : undefined;
-  const priceMax = priceMaxRaw ? parseInt(priceMaxRaw) : undefined;
-
-  // 최소 평점 필터 (선택)
-  const minRatingRaw = formData.get('minRating') as string | null;
-  const minRating = minRatingRaw ? parseFloat(minRatingRaw) : undefined;
-
   if (!regionIdValue || !date || timeSlotIds.length === 0) {
     return json({ 
       error: '모든 필드를 입력해주세요.',
-      recommendations: null,
+      courses: null,
       userFeedbacks: null,
       userFavorites: null
     }, { status: 400 });
@@ -158,42 +150,60 @@ export async function action({ request }: ActionFunctionArgs) {
   if (isNaN(regionId)) {
     return json({ 
       error: '유효하지 않은 지역입니다.',
-      recommendations: null,
+      courses: null,
       userFeedbacks: null,
       userFavorites: null
     }, { status: 400 });
   }
 
   try {
-    const recommendations = await getAdvancedRecommendations(request, {
-      regionId,
-      date,
-      timeSlotIds,
-      priceMin,
-      priceMax,
-      minRating,
-      maxResults: 12,
-      diversityWeight: 0.3
+    // 코스 생성 API 호출을 위한 FormData 생성
+    const courseFormData = new FormData();
+    courseFormData.set('regionId', regionId.toString());
+    courseFormData.set('date', date);
+    timeSlotIds.forEach(id => courseFormData.append('timeSlots', id.toString()));
+
+    // 내부 API 호출
+    const courseRequest = new Request(new URL('/api/courses/generate', request.url).toString(), {
+      method: 'POST',
+      body: courseFormData,
+      headers: request.headers,
     });
 
-    // 추천 결과와 함께 사용자 피드백, 즐겨찾기 정보도 가져오기
-    const placeIds = recommendations.places.map(place => place.id);
+    const courseResponse = await fetch(courseRequest);
+    const courseResult = await courseResponse.json();
+
+    if (!courseResponse.ok) {
+      return json({ 
+        error: courseResult.error || '코스 생성 중 오류가 발생했습니다.',
+        courses: null,
+        userFeedbacks: null,
+        userFavorites: null
+      }, { status: courseResponse.status });
+    }
+
+    // 생성된 코스에서 모든 장소 ID 추출
+    const allPlaceIds = courseResult.courses.flatMap((course: any) => 
+      course.places.map((placeInfo: any) => placeInfo.place.id)
+    );
+
+    // 사용자 피드백, 즐겨찾기 정보 가져오기
     const [userFeedbacks, userFavorites] = await Promise.all([
-      getUserFeedbacksForPlaces(request, placeIds),
-      getUserFavoritesForPlaces(request, placeIds)
+      getUserFeedbacksForPlaces(request, allPlaceIds),
+      getUserFavoritesForPlaces(request, allPlaceIds)
     ]);
 
     return json({ 
       error: null,
-      recommendations,
+      courses: courseResult,
       userFeedbacks,
       userFavorites
     });
   } catch (error) {
-    console.error('Recommendation error:', error);
+    console.error('Course generation error:', error);
     return json({ 
-      error: '추천을 가져오는 중 오류가 발생했습니다.',
-      recommendations: null,
+      error: '데이트 코스 생성 중 오류가 발생했습니다.',
+      courses: null,
       userFeedbacks: null,
       userFavorites: null
     }, { status: 500 });
@@ -209,6 +219,12 @@ export default function Index() {
   
   // 지역 선택 상태 관리
   const [selectedRegionId, setSelectedRegionId] = useState<string | number | null>(null);
+  
+  // 시간대 선택 상태 관리
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<number[]>([]);
+  
+  // 선택된 코스 상태 관리
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   
   // 지역 옵션 변환
   const regionOptions: DropdownOption[] = regions.map(region => ({
@@ -366,36 +382,25 @@ export default function Index() {
             />
 
             {/* 시간대 선택 */}
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-3">
-                희망 시간대 <span className="text-red-500">*</span>
-                <span className="text-sm text-gray-500 ml-2">(복수 선택 가능)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {timeSlots.map((timeSlot) => (
-                  <label
-                    key={timeSlot.id}
-                    className="flex items-center p-3 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
-                    aria-label={`${timeSlot.name} 시간대 선택`}
-                  >
-                    <input
-                      type="checkbox"
-                      name="timeSlots"
-                      value={timeSlot.id}
-                      className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                    />
-                    <div className="ml-3">
-                      <div className="text-sm font-medium text-gray-700">
-                        {timeSlot.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {timeSlot.start_time} - {timeSlot.end_time}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
+            <TimeSlotSelector
+              timeSlots={timeSlots}
+              selectedTimeSlots={selectedTimeSlots}
+              onChange={setSelectedTimeSlots}
+              label="희망 시간대"
+              required={true}
+              multiple={true}
+              helperText="데이트하고 싶은 시간대를 선택해주세요"
+            />
+            
+            {/* Form 전송용 hidden inputs */}
+            {selectedTimeSlots.map(timeSlotId => (
+              <input
+                key={timeSlotId}
+                type="hidden"
+                name="timeSlots"
+                value={timeSlotId}
+              />
+            ))}
 
             {/* 최소 평점 필터 */}
             <div>
@@ -473,17 +478,56 @@ export default function Index() {
           </p>
         </div>
 
-        {/* 추천 결과 */}
+        {/* 코스 추천 결과 */}
         {isLoading ? (
-          <LoadingSkeleton />
-        ) : actionData?.recommendations ? (
-          <RecommendationResults 
-            recommendations={actionData.recommendations as RecommendationResponse}
-            timeSlots={timeSlots}
-            isAdmin={userIsAdmin}
-            userFeedbacks={actionData.userFeedbacks || {}}
-            userFavorites={actionData.userFavorites || {}}
-          />
+          <div className="text-center py-8">
+            <LoadingSkeleton />
+            <p className="text-purple-600 mt-4 font-medium">
+              완벽한 데이트 코스를 생성하고 있어요... ✨
+            </p>
+          </div>
+        ) : actionData && 'courses' in actionData && actionData.courses ? (
+          <div className="space-y-6">
+            {/* 코스 목록 */}
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                ✨ 추천 데이트 코스 ✨
+              </h3>
+              <p className="text-sm text-gray-600">
+                총 {(actionData.courses as CourseGenerationResponse).courses.length}개의 코스를 추천받았습니다
+              </p>
+              <div className="text-xs text-gray-500 mt-1">
+                생성 시간: {(actionData.courses as CourseGenerationResponse).metadata.courseGenerationTime}ms
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {(actionData.courses as CourseGenerationResponse).courses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  onClick={() => setSelectedCourse(course.id === selectedCourse ? null : course.id)}
+                  isSelected={selectedCourse === course.id}
+                />
+              ))}
+            </div>
+
+            {/* 선택된 코스 상세 */}
+            {selectedCourse && (
+              <div className="mt-8">
+                {(() => {
+                  const course = (actionData.courses as CourseGenerationResponse).courses.find(c => c.id === selectedCourse);
+                  return course ? (
+                    <CourseDetail
+                      course={course}
+                      showMap={true}
+                      onClose={() => setSelectedCourse(null)}
+                    />
+                  ) : null;
+                })()}
+              </div>
+            )}
+          </div>
         ) : null}
       </main>
     </div>

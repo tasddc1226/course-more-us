@@ -39,6 +39,7 @@ export interface AdvancedRecommendationRequest {
 export interface Place {
   id: number
   name: string
+  description?: string
   latitude: number
   longitude: number
   rating?: number
@@ -46,6 +47,8 @@ export interface Place {
   source: string
   is_partnership?: boolean
   category_id?: number | null
+  price_range?: number
+  tags?: string[]
   place_time_slots?: Array<{
     time_slot_id: number
     priority?: number
@@ -54,6 +57,10 @@ export interface Place {
     image_url: string
     alt_text: string | null
   }> | null
+  categories?: {
+    name: string
+    icon: string | null
+  } | null
 }
 
 export interface PlaceScore {
