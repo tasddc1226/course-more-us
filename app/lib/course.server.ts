@@ -72,6 +72,7 @@ async function generateMultipleThemeCourses(
   params: CourseGenerationRequest
 ): Promise<DateCourse[]> {
   const courses: DateCourse[] = [];
+  const usedPlaceCombinations: Set<string> = new Set();
   
   // 기본 3가지 테마 코스 생성
   const themes: CourseTheme[] = [
@@ -82,31 +83,92 @@ async function generateMultipleThemeCourses(
 
   for (let i = 0; i < themes.length; i++) {
     const theme = themes[i];
-    const course = await generateThemeCourse(
-      places,
-      timeSlots,
-      theme,
-      `${String.fromCharCode(65 + i)}코스`, // A코스, B코스, C코스
-      params
-    );
+    let attempts = 0;
+    const maxAttempts = 3; // 최대 3번 시도
     
-    if (course) {
-      courses.push(course);
+    while (attempts < maxAttempts) {
+      const course = await generateThemeCourse(
+        places,
+        timeSlots,
+        theme,
+        `${String.fromCharCode(65 + i)}코스`, // A코스, B코스, C코스
+        params
+      );
+      
+      if (course) {
+        // 장소 조합의 고유 식별자 생성 (장소 ID들을 정렬해서 조합)
+        const placeIds = course.places.map(p => p.place.id).sort().join('-');
+        
+        if (!usedPlaceCombinations.has(placeIds)) {
+          usedPlaceCombinations.add(placeIds);
+          courses.push(course);
+          break; // 성공적으로 추가했으므로 다음 테마로
+        }
+      }
+      
+      attempts++;
     }
   }
 
   // 추가로 사용자 선호도 기반 코스 생성
-  if (params.preferences?.theme) {
-    const customCourse = await generateThemeCourse(
-      places,
-      timeSlots,
-      params.preferences.theme as CourseTheme,
-      '맞춤 코스',
-      params
-    );
+  if (params.preferences?.theme && courses.length < 3) {
+    let attempts = 0;
+    const maxAttempts = 3;
     
-    if (customCourse) {
-      courses.push(customCourse);
+    while (attempts < maxAttempts && courses.length < 4) {
+      const customCourse = await generateThemeCourse(
+        places,
+        timeSlots,
+        params.preferences.theme as CourseTheme,
+        '맞춤 코스',
+        params
+      );
+      
+      if (customCourse) {
+        const placeIds = customCourse.places.map(p => p.place.id).sort().join('-');
+        
+        if (!usedPlaceCombinations.has(placeIds)) {
+          usedPlaceCombinations.add(placeIds);
+          courses.push(customCourse);
+          break;
+        }
+      }
+      
+      attempts++;
+    }
+  }
+
+  // 코스가 부족한 경우 다양성을 높이기 위해 추가 생성 시도
+  if (courses.length < 2) {
+    const alternativeThemes = Object.values(COURSE_THEMES).filter(t => !themes.includes(t));
+    
+    for (const theme of alternativeThemes) {
+      if (courses.length >= 3) break;
+      
+      let attempts = 0;
+      const maxAttempts = 2;
+      
+      while (attempts < maxAttempts) {
+        const course = await generateThemeCourse(
+          places,
+          timeSlots,
+          theme,
+          `${String.fromCharCode(65 + courses.length)}코스`,
+          params
+        );
+        
+        if (course) {
+          const placeIds = course.places.map(p => p.place.id).sort().join('-');
+          
+          if (!usedPlaceCombinations.has(placeIds)) {
+            usedPlaceCombinations.add(placeIds);
+            courses.push(course);
+            break;
+          }
+        }
+        
+        attempts++;
+      }
     }
   }
 
@@ -232,21 +294,28 @@ async function arrangePlacesByTimeSlots(
       );
 
       if (nearbyPlaces.length > 0) {
-        // 가장 가까우면서 점수가 높은 장소 선택
+        // 가장 가까우면서 점수가 높은 장소들 중에서 상위 후보들 선택
         nearbyPlaces.sort((a, b) => {
           const scoreA = (a.place.recommendationScore || 0) - (a.distance / 1000) * 5;
           const scoreB = (b.place.recommendationScore || 0) - (b.distance / 1000) * 5;
           return scoreB - scoreA;
         });
         
-        selectedPlace = nearbyPlaces[0].place;
-        distanceFromPrevious = nearbyPlaces[0].distance;
+        // 상위 3개 후보 중에서 랜덤 선택 (다양성 증대)
+        const topCandidates = nearbyPlaces.slice(0, Math.min(3, nearbyPlaces.length));
+        const randomIndex = Math.floor(Math.random() * topCandidates.length);
+        selectedPlace = topCandidates[randomIndex].place;
+        distanceFromPrevious = topCandidates[randomIndex].distance;
         travelTime = estimateTravelTime(distanceFromPrevious);
       } else {
-        // 최대 이동 시간을 초과하는 경우 가장 점수 높은 장소 선택
-        selectedPlace = candidatePlaces.sort((a, b) => 
+        // 최대 이동 시간을 초과하는 경우 가장 점수 높은 장소들 중 랜덤 선택
+        const sortedByScore = candidatePlaces.sort((a, b) => 
           (b.recommendationScore || 0) - (a.recommendationScore || 0)
-        )[0];
+        );
+        
+        const topCandidates = sortedByScore.slice(0, Math.min(2, sortedByScore.length));
+        const randomIndex = Math.floor(Math.random() * topCandidates.length);
+        selectedPlace = topCandidates[randomIndex];
         
         if (previousPlace) {
           distanceFromPrevious = calculateDistance(
@@ -260,9 +329,14 @@ async function arrangePlacesByTimeSlots(
       }
     } else {
       // 첫 번째 장소이거나 후보가 하나뿐인 경우
-      selectedPlace = candidatePlaces.sort((a, b) => 
+      const sortedByScore = candidatePlaces.sort((a, b) => 
         (b.recommendationScore || 0) - (a.recommendationScore || 0)
-      )[0];
+      );
+      
+      // 상위 2개 후보 중 랜덤 선택
+      const topCandidates = sortedByScore.slice(0, Math.min(2, sortedByScore.length));
+      const randomIndex = Math.floor(Math.random() * topCandidates.length);
+      selectedPlace = topCandidates[randomIndex];
     }
 
     // 카테고리 기반 추천 체류 시간 계산

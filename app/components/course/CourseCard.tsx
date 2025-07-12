@@ -106,10 +106,23 @@ export function CourseCard({ course, onClick, isSelected = false }: CourseCardPr
               {course.name}
             </h3>
           </div>
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(course.difficulty)}`}>
-            {getDifficultyText(course.difficulty)}
-          </div>
+          {/* 선택 상태가 아닐 때만 우상단에 난이도 표시 */}
+          {!isSelected && (
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(course.difficulty)}`}>
+              {getDifficultyText(course.difficulty)}
+            </div>
+          )}
         </div>
+        
+        {/* 선택 상태일 때 난이도를 제목 아래로 이동 */}
+        {isSelected && (
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(course.difficulty)}`}>
+              {getDifficultyText(course.difficulty)}
+            </div>
+            <span className="text-xs text-purple-600">• 체크된 코스</span>
+          </div>
+        )}
         
         <p className={`text-sm mb-3 ${isSelected ? 'text-purple-600' : 'text-gray-600'}`}>
           {themeConfig?.description || course.description}
