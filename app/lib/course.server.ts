@@ -769,8 +769,8 @@ async function convertSearchCourseToDomainCourse(
         id: -(i + 1), // 음수 ID로 AI 추천 장소임을 표시
         name: searchPlace.name,
         description: searchPlace.searchInfo?.recommendationReason || `AI가 추천한 ${searchPlace.category || '장소'}`,
-        latitude: 0, // 기본값으로 0 설정
-        longitude: 0, // 기본값으로 0 설정
+        latitude: 37.5665 + (Math.random() - 0.5) * 0.1, // 서울 중심 좌표 근처 랜덤 (실제로는 검색 API 사용)
+        longitude: 126.9780 + (Math.random() - 0.5) * 0.1, // 서울 중심 좌표 근처 랜덤 (실제로는 검색 API 사용)
         rating: 4.5, // 기본 평점
         price_range: 2, // 기본 가격대
         is_partnership: false,
@@ -790,15 +790,15 @@ async function convertSearchCourseToDomainCourse(
         place_images: []
       };
       
-              if (timeSlot) {
-          coursePlaces.push({
-            place: virtualPlace,
-            timeSlot,
-            suggestedDuration: searchPlace.duration || 90,
-            order: i + 1,
-            distanceFromPrevious: i > 0 ? 500 : undefined, // 가상의 거리
-            travelTimeFromPrevious: i > 0 ? 10 : undefined // 가상의 이동시간
-          });
+      if (timeSlot) {
+        coursePlaces.push({
+          place: virtualPlace,
+          timeSlot,
+          suggestedDuration: searchPlace.duration || 90,
+          order: i + 1,
+          distanceFromPrevious: i > 0 ? 500 : undefined, // 가상의 거리
+          travelTimeFromPrevious: i > 0 ? 10 : undefined // 가상의 이동시간
+        });
         console.log(`   ✅ AI 장소 추가 완료: ${searchPlace.name}`);
       } else {
         console.log(`   ❌ 시간대 매칭 실패: ${searchPlace.name}`);
@@ -856,10 +856,6 @@ async function convertSearchCourseToDomainCourse(
   }
 }
 
-
-
-
-
 /**
  * 시간대 이름으로 TimeSlot 찾기
  */
@@ -872,10 +868,6 @@ function findTimeSlotByName(timeSlotName: string | undefined, timeSlots: TimeSlo
     ts.name.includes(timeSlotName) || timeSlotName.includes(ts.name)
   ) || timeSlots[0] || null;
 }
-
-
-
-
 
 /**
  * 검색 기반 코스 태그 생성

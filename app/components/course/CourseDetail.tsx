@@ -1,6 +1,7 @@
 import type { DateCourse } from '~/types/course';
 import { THEME_CONFIGS } from '~/types/course';
 import { useState } from 'react';
+import CourseMap from './CourseMap';
 
 interface CourseDetailProps {
   course: DateCourse;
@@ -243,6 +244,22 @@ export function CourseDetail({ course, showMap = false, onClose }: CourseDetailP
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
           ℹ️ 코스 정보
         </h3>
+      </div>
+
+      {/* 코스 지도 */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <h5 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span>🗺️</span>
+          코스 경로
+        </h5>
+        <CourseMap 
+          places={course.places}
+          height="320px"
+          className="rounded-xl"
+        />
+        <div className="mt-3 text-sm text-gray-600">
+          <p>💡 지도에서 코스 순서대로 번호가 표시됩니다</p>
+        </div>
       </div>
 
       {/* 기본 정보 */}
