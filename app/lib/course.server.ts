@@ -1,19 +1,19 @@
-import { getAdvancedRecommendations } from './recommendation.server';
 import type { 
   CourseGenerationRequest, 
   CourseGenerationResponse, 
   DateCourse, 
-  CoursePlaceInfo,
-  CourseTheme,
-  TimeSlot 
+  CoursePlaceInfo, 
+  TimeSlot, 
+  CourseTheme
 } from '~/types/course';
 import { 
-  COURSE_THEMES, 
-  THEME_CONFIGS, 
-  DEFAULT_DURATION_BY_CATEGORY 
+  COURSE_THEMES,
+  THEME_CONFIGS,
+  DEFAULT_DURATION_BY_CATEGORY
 } from '~/types/course';
 import type { RecommendedPlace } from './recommendation/types';
 import { getTimeSlots } from './data.server';
+import { getAdvancedRecommendations } from './recommendation.server';
 
 /**
  * 데이트 코스 생성 메인 함수
@@ -469,26 +469,360 @@ function calculateDifficulty(totalDistance: number, totalDuration: number): 'eas
  * 날씨 적합성 판단
  */
 function determineWeatherSuitability(coursePlaces: CoursePlaceInfo[]): 'indoor' | 'outdoor' | 'mixed' {
-  const indoorCategories = ['cafe', 'restaurant', 'culture', 'shopping'];
-  const outdoorCategories = ['walking', 'activity'];
-  
   let indoorCount = 0;
   let outdoorCount = 0;
-  
+
   coursePlaces.forEach(cp => {
-    const categoryName = cp.place.categories?.name?.toLowerCase() || '';
-    if (indoorCategories.some(cat => categoryName.includes(cat))) {
+    const category = cp.place.categories?.name?.toLowerCase();
+    if (category?.includes('cafe') || category?.includes('restaurant') || 
+        category?.includes('culture') || category?.includes('shopping')) {
       indoorCount++;
-    } else if (outdoorCategories.some(cat => categoryName.includes(cat))) {
+    } else if (category?.includes('walking') || category?.includes('park')) {
       outdoorCount++;
     }
   });
-  
-  if (indoorCount > outdoorCount * 2) {
-    return 'indoor';
-  } else if (outdoorCount > indoorCount * 2) {
-    return 'outdoor';
-  } else {
-    return 'mixed';
+
+  if (indoorCount > outdoorCount * 2) return 'indoor';
+  if (outdoorCount > indoorCount * 2) return 'outdoor';
+  return 'mixed';
+}
+
+/**
+ * 🔍 하이브리드 코스 생성 시스템 (Perplexity 검색 + 기존 알고리즘)
+ */
+
+import type { 
+  PerplexityCoursePlanningRequest,
+  ExtendedCourseRequest,
+  ExtendedCourseResponse,
+  ExtendedDateCourse,
+  SearchBasedPlaceInfo
+} from '~/types/perplexity';
+import { generateCachedPerplexityCourse } from '~/lib/perplexity-course.server';
+import { env } from '~/config/env';
+
+/**
+ * 확장된 코스 생성 함수 (검색 기반 + 기존 알고리즘)
+ */
+export async function generateHybridDateCourses(
+  request: Request,
+  params: ExtendedCourseRequest
+): Promise<ExtendedCourseResponse> {
+  const startTime = Date.now();
+
+  // 1. 기본 장소 추천 받기
+  const recommendations = await getAdvancedRecommendations(request, {
+    regionId: params.regionId,
+    date: params.date,
+    timeSlotIds: params.timeSlotIds,
+    maxResults: 20,
+    diversityWeight: 0.4
+  });
+
+  // 2. 시간대 정보 가져오기
+  const timeSlots = await getTimeSlots(request) as TimeSlot[];
+  const selectedTimeSlots = timeSlots.filter((ts: TimeSlot) => 
+    params.timeSlotIds.includes(ts.id)
+  );
+
+  const courses: ExtendedDateCourse[] = [];
+  let hasSearchResults = false;
+
+  // 3. Perplexity 검색 기반 AI 코스 생성 (우선순위)
+  if (params.searchRequest?.userRequest && env.ENABLE_SEARCH_RECOMMENDATIONS) {
+    try {
+      const perplexityRequest: PerplexityCoursePlanningRequest = {
+        userRequest: params.searchRequest.userRequest,
+        preferences: {
+          interests: params.searchRequest.interests || [],
+          budgetRange: params.searchRequest.budgetRange || { min: 0, max: 100000 },
+          includeTrends: params.searchRequest.includeTrends || false,
+          includeReviews: params.searchRequest.includeReviews || false
+        },
+        contextData: {
+          selectedRegion: await getRegionById(request, params.regionId),
+          selectedTimeSlots,
+          selectedDate: params.date,
+          availablePlaces: recommendations.places
+        }
+      };
+
+      const searchCourse = await generateCachedPerplexityCourse(perplexityRequest);
+      const convertedCourse = await convertSearchCourseToDomainCourse(
+        searchCourse, 
+        recommendations.places, 
+        selectedTimeSlots
+      );
+      
+      if (convertedCourse) {
+        courses.unshift(convertedCourse); // 검색 기반 코스를 맨 앞에 배치
+        hasSearchResults = true;
+      }
+    } catch (error) {
+      console.error('Perplexity 코스 생성 실패:', error);
+      // 검색 실패 시 기존 코스로 폴백 (에러를 던지지 않음)
+    }
   }
+
+  // 4. 기존 테마별 코스 생성 (중복 제거 후 추가)
+  const traditionalCourses = await generateMultipleThemeCourses(
+    recommendations.places,
+    selectedTimeSlots,
+    params
+  );
+  
+  // 중복 제거: 검색 기반 코스와 동일한 장소 조합인 전통 코스 제거
+  const uniqueTraditionalCourses = filterDuplicateCourses(
+    traditionalCourses, 
+    courses
+  );
+  
+  courses.push(...uniqueTraditionalCourses.map(course => ({
+    ...course,
+    isSearchRecommended: false
+  })));
+
+  const endTime = Date.now();
+
+  return {
+    courses: courses.slice(0, 4), // 최대 4개 코스
+    hasSearchResults,
+    searchMetadata: params.searchRequest ? {
+      includedTrends: params.searchRequest.includeTrends || false,
+      includedReviews: params.searchRequest.includeReviews || false,
+      searchTimestamp: new Date().toISOString()
+    } : undefined,
+    generationId: `hybrid_course_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  };
+}
+
+/**
+ * 중복 코스 필터링 (장소 조합이 동일한 코스 제거)
+ */
+function filterDuplicateCourses(
+  candidateCourses: DateCourse[], 
+  existingCourses: ExtendedDateCourse[]
+): DateCourse[] {
+  const existingCombinations = new Set(
+    existingCourses.map(course => {
+      const placeIds = course.places.map(p => {
+        // SearchBasedPlaceInfo와 CoursePlaceInfo 모두 처리
+        if ('place' in p) {
+          return p.place.id; // CoursePlaceInfo의 경우
+        } else {
+          return p.name; // SearchBasedPlaceInfo의 경우 name 사용
+        }
+      }).sort().join('-');
+      return placeIds;
+    })
+  );
+
+  return candidateCourses.filter(course => {
+    const placeIds = course.places.map(p => p.place.id).sort().join('-');
+    return !existingCombinations.has(placeIds);
+  });
+}
+
+/**
+ * Perplexity 검색 결과를 도메인 코스로 변환
+ */
+async function convertSearchCourseToDomainCourse(
+  searchCourse: {
+    recommendedCourse: {
+      name?: string;
+      theme?: string;
+      description?: string;
+      places: SearchBasedPlaceInfo[];
+      realTimeAdvice?: string[];
+    };
+    searchSummary: {
+      trendingPlaces?: string[];
+      seasonalEvents?: string[];
+      weatherConsiderations?: string;
+    };
+    citations?: string[];
+  },
+  availablePlaces: RecommendedPlace[],
+  timeSlots: TimeSlot[]
+): Promise<ExtendedDateCourse | null> {
+  try {
+    const { recommendedCourse, searchSummary, citations } = searchCourse;
+    
+    // 검색 기반 장소들을 CoursePlaceInfo 형태로 변환
+    const coursePlaces: CoursePlaceInfo[] = [];
+    
+    for (let i = 0; i < recommendedCourse.places.length; i++) {
+      const searchPlace = recommendedCourse.places[i];
+      
+      // 기존 등록된 장소와 매칭 시도
+      const matchedPlace = findMatchingPlace(searchPlace, availablePlaces);
+      
+      if (matchedPlace) {
+        // 매칭된 경우 기존 장소 정보 사용
+        const timeSlot = findTimeSlotByName(searchPlace.timeSlot, timeSlots);
+        if (timeSlot) {
+          coursePlaces.push({
+            place: matchedPlace,
+            timeSlot,
+            suggestedDuration: searchPlace.duration || 60,
+            order: i + 1,
+            distanceFromPrevious: i > 0 ? calculateDistanceFromPrevious(coursePlaces, matchedPlace) : undefined,
+            travelTimeFromPrevious: i > 0 ? estimateTravelTimeFromPrevious(coursePlaces, matchedPlace) : undefined
+          });
+        }
+      }
+      // 매칭되지 않은 새로운 장소는 일단 스킵 (향후 개선 가능)
+    }
+
+    if (coursePlaces.length === 0) return null;
+
+    // 코스 메타데이터 계산
+    const courseMetadata = calculateCourseMetadata(coursePlaces);
+
+    return {
+      id: `search_course_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      name: recommendedCourse.name || '🔍 AI 맞춤 추천 코스',
+      theme: recommendedCourse.theme || '맞춤형',
+      description: recommendedCourse.description,
+      totalDuration: courseMetadata.totalDuration,
+      totalDistance: courseMetadata.totalDistance,
+      places: coursePlaces,
+      estimatedCost: courseMetadata.estimatedCost,
+      tags: generateSearchCourseTags(recommendedCourse, searchSummary),
+      difficulty: calculateDifficulty(courseMetadata.totalDistance, courseMetadata.totalDuration),
+      weatherSuitability: determineWeatherSuitability(coursePlaces),
+      
+      // 검색 관련 필드들
+      isSearchRecommended: true,
+      searchInfo: searchSummary,
+      citations,
+      realTimeAdvice: recommendedCourse.realTimeAdvice || []
+    };
+
+  } catch (error) {
+    console.error('검색 코스 변환 실패:', error);
+    return null;
+  }
+}
+
+/**
+ * 검색 기반 장소와 기존 등록된 장소 매칭
+ */
+function findMatchingPlace(
+  searchPlace: SearchBasedPlaceInfo, 
+  availablePlaces: RecommendedPlace[]
+): RecommendedPlace | null {
+  // 이름 기반 정확 매칭
+  let matched = availablePlaces.find(place => 
+    place.name.trim().toLowerCase() === searchPlace.name.trim().toLowerCase()
+  );
+  
+  if (matched) return matched;
+
+  // 이름 부분 매칭 (60% 이상 유사도)
+  matched = availablePlaces.find(place => {
+    const similarity = calculateStringSimilarity(
+      place.name.trim().toLowerCase(), 
+      searchPlace.name.trim().toLowerCase()
+    );
+    return similarity > 0.6;
+  });
+
+  return matched || null;
+}
+
+/**
+ * 문자열 유사도 계산 (간단한 Jaccard 유사도)
+ */
+function calculateStringSimilarity(str1: string, str2: string): number {
+  const set1 = new Set(str1.split(''));
+  const set2 = new Set(str2.split(''));
+  
+  const intersection = new Set([...set1].filter(x => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+  
+  return intersection.size / union.size;
+}
+
+/**
+ * 시간대 이름으로 TimeSlot 찾기
+ */
+function findTimeSlotByName(timeSlotName: string, timeSlots: TimeSlot[]): TimeSlot | null {
+  return timeSlots.find(ts => 
+    ts.name.includes(timeSlotName) || timeSlotName.includes(ts.name)
+  ) || timeSlots[0]; // 기본값으로 첫 번째 시간대 반환
+}
+
+/**
+ * 이전 장소로부터의 거리 계산
+ */
+function calculateDistanceFromPrevious(
+  coursePlaces: CoursePlaceInfo[], 
+  currentPlace: RecommendedPlace
+): number {
+  if (coursePlaces.length === 0) return 0;
+  
+  const previousPlace = coursePlaces[coursePlaces.length - 1].place;
+  return calculateDistance(
+    previousPlace.latitude,
+    previousPlace.longitude,
+    currentPlace.latitude,
+    currentPlace.longitude
+  );
+}
+
+/**
+ * 이전 장소로부터의 이동 시간 계산
+ */
+function estimateTravelTimeFromPrevious(
+  coursePlaces: CoursePlaceInfo[], 
+  currentPlace: RecommendedPlace
+): number {
+  const distance = calculateDistanceFromPrevious(coursePlaces, currentPlace);
+  return estimateTravelTime(distance);
+}
+
+/**
+ * 검색 기반 코스 태그 생성
+ */
+function generateSearchCourseTags(recommendedCourse: any, searchSummary: any): string[] {
+  const tags: string[] = [];
+  
+  // 테마 기반 태그
+  if (recommendedCourse.theme) {
+    tags.push(recommendedCourse.theme);
+  }
+  
+  // 트렌딩 장소 기반 태그
+  if (searchSummary.trendingPlaces?.length > 0) {
+    tags.push('트렌딩', '인기');
+  }
+  
+  // 계절 이벤트 기반 태그
+  if (searchSummary.seasonalEvents?.length > 0) {
+    tags.push('시즌특가', '이벤트');
+  }
+  
+  // 장소 카테고리 기반 태그
+  const categories = recommendedCourse.places?.map((p: any) => p.category) || [];
+  const uniqueCategories = [...new Set(categories)];
+  tags.push(...uniqueCategories);
+  
+  // 실시간 검색 태그
+  tags.push('실시간', 'AI추천');
+  
+  return [...new Set(tags)].slice(0, 6); // 중복 제거 후 최대 6개
+}
+
+/**
+ * 지역 정보 조회 (단순화된 버전)
+ */
+async function getRegionById(request: Request, regionId: number): Promise<any> {
+  // 실제 구현에서는 데이터베이스에서 지역 정보를 조회해야 합니다.
+  // 임시로 기본값 반환
+  return {
+    id: regionId,
+    name: '홍대', // 기본값
+    slug: 'hongdae'
+  };
 }
