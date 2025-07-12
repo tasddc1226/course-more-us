@@ -122,6 +122,15 @@ export interface ExtendedCourseResponse {
     searchTimestamp: string;
   };
   generationId: string;
+  metadata: {
+    totalCandidatePlaces: number;
+    courseGenerationTime: number;
+    requestInfo: {
+      regionId: number;
+      date: string;
+      timeSlotIds: number[];
+    };
+  };
 }
 
 // 검색 정보가 포함된 확장 코스 타입

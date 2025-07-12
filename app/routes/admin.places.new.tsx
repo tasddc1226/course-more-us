@@ -3,7 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Form, useActionData, Link } from "@remix-run/react";
 import { useState } from "react";
 import { getRegions, getCategories, getTimeSlots, createPlace, updatePlaceTimeSlots } from "~/lib/admin.server";
-import { Button, Input, Dropdown, type DropdownOption } from "~/components/ui";
+import { Button, Input, Textarea, Select, Dropdown, type DropdownOption } from "~/components/ui";
 import { ROUTES } from "~/constants/routes";
 
 export const meta: MetaFunction = () => {
@@ -242,14 +242,10 @@ export default function NewPlace() {
 
             {/* 설명 */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                설명
-              </label>
-              <textarea
-                id="description"
+              <Textarea
+                label="설명"
                 name="description"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 placeholder="장소에 대한 설명을 입력하세요"
               />
             </div>
@@ -315,20 +311,18 @@ export default function NewPlace() {
               <h3 className="text-lg font-medium text-gray-900">가격 및 설정</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label htmlFor="price_range" className="block text-sm font-medium text-gray-700 mb-2">
-                    가격대 (1~5)
-                  </label>
-                  <select
-                    id="price_range"
+                  <Select
+                    label="가격대 (1~5)"
                     name="price_range"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  >
-                    <option value="1">💰 저렴함</option>
-                    <option value="2">💰💰 보통</option>
-                    <option value="3">💰💰💰 비쌈</option>
-                    <option value="4">💰💰💰💰 매우 비쌈</option>
-                    <option value="5">💰💰💰💰💰 최고급</option>
-                  </select>
+                    options={[
+                      { value: "1", label: "💰 저렴함" },
+                      { value: "2", label: "💰💰 보통" },
+                      { value: "3", label: "💰💰💰 비쌈" },
+                      { value: "4", label: "💰💰💰💰 매우 비쌈" },
+                      { value: "5", label: "💰💰💰💰💰 최고급" }
+                    ]}
+                    placeholder="가격대를 선택하세요"
+                  />
                 </div>
 
                 <div>

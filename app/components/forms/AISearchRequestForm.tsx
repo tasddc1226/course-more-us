@@ -1,48 +1,25 @@
 import { useState } from 'react';
+import { Form } from '@remix-run/react';
 import FormField from '~/components/ui/FormField';
 import Textarea from '~/components/ui/Textarea';
 import Select from '~/components/ui/Select';
 import Button from '~/components/ui/Button';
 import { INTEREST_TAGS, BUDGET_RANGES } from '~/types/perplexity';
 
-export interface AISearchFormData {
-  userRequest: string;
-  interests: string[];
-  budgetRange: { min: number; max: number };
-  includeTrends: boolean;
-  includeReviews: boolean;
-}
-
 interface AISearchRequestFormProps {
-  onSubmit: (data: AISearchFormData) => void;
   isLoading?: boolean;
   className?: string;
 }
 
 export function AISearchRequestForm({ 
-  onSubmit, 
   isLoading = false,
   className = '' 
 }: AISearchRequestFormProps) {
   const [userRequest, setUserRequest] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [selectedBudget, setSelectedBudget] = useState<{ min: number; max: number }>(BUDGET_RANGES[1].value);
+  const [selectedBudgetIndex, setSelectedBudgetIndex] = useState(1); // 기본값: 두 번째 예산 범위
   const [includeTrends, setIncludeTrends] = useState(true);
   const [includeReviews, setIncludeReviews] = useState(true);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (!userRequest.trim()) return;
-
-    onSubmit({
-      userRequest: userRequest.trim(),
-      interests: selectedInterests,
-      budgetRange: selectedBudget,
-      includeTrends,
-      includeReviews
-    });
-  };
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev => 
@@ -70,7 +47,7 @@ export function AISearchRequestForm({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <Form method="post" className="space-y-6">
         {/* 자연어 요청 입력 */}
         <FormField 
           label="어떤 데이트를 원하시나요?" 
@@ -81,6 +58,7 @@ export function AISearchRequestForm({
               예: 조용하고 아늑한 곳에서 대화 중심의 데이트를 하고 싶어요.
             </p>
             <Textarea
+              name="userRequest"
               value={userRequest}
               onChange={(e) => setUserRequest(e.target.value)}
               placeholder="원하는 데이트 스타일, 분위기, 특별한 요청 등을 자유롭게 설명해주세요.
@@ -123,8 +101,8 @@ export function AISearchRequestForm({
                   className={`
                     px-3 py-2 text-sm rounded-lg border transition-all duration-200
                     ${selectedInterests.includes(interest)
-                      ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-purple-300 hover:bg-purple-50'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-medium'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
                     }
                     ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                   `}
@@ -134,10 +112,20 @@ export function AISearchRequestForm({
               ))}
             </div>
             {selectedInterests.length > 0 && (
-              <div className="text-xs text-purple-600">
+              <div className="text-xs text-emerald-600">
                 선택된 관심사: {selectedInterests.join(', ')}
               </div>
             )}
+            
+            {/* Hidden inputs for selected interests */}
+            {selectedInterests.map((interest) => (
+              <input
+                key={interest}
+                type="hidden"
+                name="interestTags"
+                value={interest}
+              />
+            ))}
           </div>
         </FormField>
 
@@ -150,23 +138,27 @@ export function AISearchRequestForm({
               1인 기준 예상 예산을 선택해주세요.
             </p>
             <Select
-              value={BUDGET_RANGES.findIndex(b => 
-                b.value.min === selectedBudget.min && b.value.max === selectedBudget.max
-              )}
+              name="budgetRange"
+              value={JSON.stringify(BUDGET_RANGES[selectedBudgetIndex].value)}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                const selectedIndex = parseInt(e.target.value);
-                if (selectedIndex >= 0 && selectedIndex < BUDGET_RANGES.length) {
-                  setSelectedBudget(BUDGET_RANGES[selectedIndex].value);
+                try {
+                  const budgetValue = JSON.parse(e.target.value);
+                  const index = BUDGET_RANGES.findIndex(
+                    b => b.value.min === budgetValue.min && b.value.max === budgetValue.max
+                  );
+                  if (index >= 0) {
+                    setSelectedBudgetIndex(index);
+                  }
+                } catch (error) {
+                  console.error('Budget range parsing error:', error);
                 }
               }}
+              options={BUDGET_RANGES.map((budget) => ({
+                value: JSON.stringify(budget.value),
+                label: budget.label
+              }))}
               disabled={isLoading}
-            >
-              {BUDGET_RANGES.map((budget, index) => (
-                <option key={index} value={index}>
-                  {budget.label}
-                </option>
-              ))}
-            </Select>
+            />
           </div>
         </FormField>
 
@@ -181,12 +173,17 @@ export function AISearchRequestForm({
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <input
+                  type="hidden"
+                  name="includeTrends"
+                  value={includeTrends.toString()}
+                />
+                <input
                   type="checkbox"
                   id="includeTrends"
                   checked={includeTrends}
                   onChange={(e) => setIncludeTrends(e.target.checked)}
                   disabled={isLoading}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                 />
                 <label htmlFor="includeTrends" className="cursor-pointer">
                   <span className="text-sm font-medium text-gray-700">최신 트렌드 반영</span>
@@ -196,12 +193,17 @@ export function AISearchRequestForm({
               
               <div className="flex items-center gap-3">
                 <input
+                  type="hidden"
+                  name="includeReviews"
+                  value={includeReviews.toString()}
+                />
+                <input
                   type="checkbox"
                   id="includeReviews"
                   checked={includeReviews}
                   onChange={(e) => setIncludeReviews(e.target.checked)}
                   disabled={isLoading}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                 />
                 <label htmlFor="includeReviews" className="cursor-pointer">
                   <span className="text-sm font-medium text-gray-700">실시간 리뷰 기반 추천</span>
@@ -219,7 +221,7 @@ export function AISearchRequestForm({
             variant="primary"
             size="lg"
             disabled={!hasValidInput || isLoading}
-            className="w-full"
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
           >
             {isLoading ? (
               <div className="flex items-center justify-center gap-2">
@@ -228,7 +230,7 @@ export function AISearchRequestForm({
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2">
-                <span className="text-lg">🔍</span>
+                <span className="text-lg">🤖</span>
                 <span>AI 맞춤 데이트 코스 추천받기</span>
               </div>
             )}
@@ -246,7 +248,16 @@ export function AISearchRequestForm({
           <p>💡 구체적으로 설명할수록 더 정확한 맞춤 추천을 받을 수 있어요</p>
           <p>🔍 실시간 검색으로 최신 정보를 반영한 코스를 추천해드립니다</p>
         </div>
-      </form>
+      </Form>
     </div>
   );
+}
+
+// Backwards compatibility export
+export interface AISearchFormData {
+  userRequest: string;
+  interests: string[];
+  budgetRange: { min: number; max: number };
+  includeTrends: boolean;
+  includeReviews: boolean;
 } 

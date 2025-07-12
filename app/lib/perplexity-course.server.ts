@@ -135,51 +135,100 @@ export async function generatePerplexityCourse(
     throw new Error('Perplexity API 키가 설정되지 않았습니다.');
   }
 
-  const systemPrompt = buildPerplexitySystemPrompt(request);
   const userQuery = buildSearchQuery(request);
 
+  const requestBody = {
+    model: 'sonar', // 최신 Perplexity Sonar 모델
+    messages: [
+      {
+        role: 'user',
+        content: `${userQuery}\n\n위 요청을 바탕으로 한국의 데이트 코스를 다음 JSON 형태로 추천해주세요:
+{
+  "recommendedCourse": {
+    "name": "코스명",
+    "description": "코스 설명",
+    "places": [
+      {
+        "name": "장소명",
+        "category": "카테고리",
+        "timeSlot": "시간대",
+        "duration": 90
+      }
+    ]
+  }
+}`
+      }
+    ],
+    temperature: 0.3,
+    max_tokens: 2000, // JSON 응답을 위해 토큰 수 증가
+    return_citations: true, // Sonar 모델은 citations 지원
+  };
+
+
+
   try {
+    // AbortController로 타임아웃 설정 (30초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'User-Agent': 'CourseMoreUs/1.0'
       },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userQuery
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 3000,
-        return_citations: true,
-        search_domain_filter: ['korean'], // 한국 도메인 우선 검색
-      })
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId); // 응답 받으면 타임아웃 해제
+
+    console.log('📥 API 응답 상태:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`Perplexity API 호출 실패: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error('❌ API 에러 응답 본문:', errorBody);
+      
+      // 상세한 에러 메시지 제공
+      let errorMessage = `Perplexity API 호출 실패: ${response.status} ${response.statusText}`;
+      if (errorBody) {
+        try {
+          const errorJson = JSON.parse(errorBody);
+          if (errorJson.error?.message) {
+            errorMessage += ` - ${errorJson.error.message}`;
+          }
+        } catch {
+          errorMessage += ` - ${errorBody.substring(0, 200)}`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const apiResponse: PerplexityAPIResponse = await response.json();
+    console.log('✅ API 응답 받음:', {
+      choices: apiResponse.choices?.length || 0,
+      citations: apiResponse.citations?.length || 0
+    });
     
     if (!apiResponse.choices || apiResponse.choices.length === 0) {
       throw new Error('Perplexity API 응답이 비어있습니다.');
     }
 
     const content = apiResponse.choices[0].message.content;
+    console.log('📝 응답 내용 길이:', content.length, 'chars');
     
     return parsePerplexityResponse(content, apiResponse.citations);
 
   } catch (error) {
-    console.error('Perplexity API 호출 오류:', error);
+    console.error('❌ Perplexity API 호출 오류:', error);
+    
+    // 네트워크 에러와 API 에러 구분
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('네트워크 연결 오류: Perplexity API에 연결할 수 없습니다.');
+    }
+    
     throw new Error(`검색 기반 코스 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
   }
 }
@@ -200,20 +249,43 @@ function parsePerplexityResponse(
     }
 
     const jsonString = jsonMatch[1] || jsonMatch[0];
+    console.log('🔍 파싱할 JSON:', jsonString.substring(0, 200) + '...');
+    
     const parsedResponse = JSON.parse(jsonString);
 
-    // 응답 구조 검증
-    if (!parsedResponse.searchSummary || !parsedResponse.recommendedCourse) {
-      throw new Error('응답 구조가 올바르지 않습니다.');
+    // recommendedCourse만 필수로 검증 (searchSummary는 선택사항)
+    if (!parsedResponse.recommendedCourse) {
+      throw new Error('recommendedCourse가 응답에 없습니다.');
     }
 
+    // searchSummary가 없으면 기본값 생성
+    const searchSummary = parsedResponse.searchSummary || {
+      trendingPlaces: ['실시간 검색 기반 추천'],
+      seasonalEvents: [],
+      weatherConsiderations: '계절 고려사항 포함됨'
+    };
+
+    // recommendedCourse 구조 보완
+    const recommendedCourse = {
+      name: parsedResponse.recommendedCourse.name || '🤖 AI 추천 코스',
+      theme: parsedResponse.recommendedCourse.theme || '맞춤형',
+      description: parsedResponse.recommendedCourse.description || '실시간 검색으로 생성된 맞춤 데이트 코스입니다.',
+      reasoning: parsedResponse.recommendedCourse.reasoning || 'AI 검색 기반 추천',
+      places: parsedResponse.recommendedCourse.places || [],
+      realTimeAdvice: parsedResponse.recommendedCourse.realTimeAdvice || []
+    };
+
+    console.log('✅ 파싱 성공 - 코스명:', recommendedCourse.name);
+    console.log('✅ 장소 수:', recommendedCourse.places.length);
+
     return {
-      ...parsedResponse,
+      searchSummary,
+      recommendedCourse,
       citations: citations || []
     } as PerplexityCourseResponse;
 
   } catch (error) {
-    console.error('Perplexity 응답 파싱 오류:', error);
+    console.error('❌ Perplexity 응답 파싱 오류:', error);
     console.error('원본 응답:', content);
     
     // 파싱 실패 시 기본 응답 반환
@@ -269,6 +341,10 @@ function generateCacheKey(request: PerplexityCoursePlanningRequest): string {
 export async function generateCachedPerplexityCourse(
   request: PerplexityCoursePlanningRequest
 ): Promise<PerplexityCourseResponse> {
+  console.log('🤖 AI 데이트 코스 생성 요청 시작');
+  console.log('사용자 요청:', request.userRequest);
+  console.log('지역:', request.contextData.selectedRegion.name);
+  
   const cacheKey = generateCacheKey(request);
   const cachedResult = searchCache.get(cacheKey);
   
@@ -276,7 +352,7 @@ export async function generateCachedPerplexityCourse(
   if (cachedResult) {
     const ageInMinutes = (Date.now() - cachedResult.timestamp) / (1000 * 60);
     if (ageInMinutes < env.SEARCH_CACHE_DURATION) {
-      console.log('캐시된 검색 결과 사용:', cacheKey.substring(0, 10) + '...');
+      console.log('✅ 캐시된 검색 결과 사용:', cacheKey.substring(0, 10) + '...');
       return cachedResult.response;
     } else {
       // 만료된 캐시 제거
@@ -284,8 +360,13 @@ export async function generateCachedPerplexityCourse(
     }
   }
 
+  console.log('🔍 Perplexity API 호출 시작...');
+  
   // 새로운 검색 수행
   const response = await generatePerplexityCourse(request);
+  
+  console.log('✅ Perplexity API 호출 완료');
+  console.log('코스명:', response.recommendedCourse.name);
   
   // 캐시에 저장
   searchCache.set(cacheKey, {
@@ -293,7 +374,7 @@ export async function generateCachedPerplexityCourse(
     timestamp: Date.now()
   });
 
-  console.log('새로운 검색 결과 캐시:', cacheKey.substring(0, 10) + '...');
+  console.log('💾 새로운 검색 결과 캐시 저장:', cacheKey.substring(0, 10) + '...');
   
   return response;
 } 

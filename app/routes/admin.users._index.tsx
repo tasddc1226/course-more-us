@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs, MetaFunction } from "@remi
 import { json } from "@remix-run/node";
 import { useLoaderData, useActionData, Form, useSubmit } from "@remix-run/react";
 import { requireAdmin, getAllUsers, updateUserRole, deleteUser, getUserStats } from "~/lib/admin.server";
-import { Button } from "~/components/ui";
+import { Button, Select } from "~/components/ui";
 import { PageHeader } from "~/components/common";
 import { ROUTES } from "~/constants/routes";
 import { formatDate } from "~/utils/date";
@@ -254,15 +254,18 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value as 'admin' | 'user')}
-                          disabled={user.id === currentUser.id}
-                          className="text-sm border-gray-300 rounded-md"
-                        >
-                          <option value="user">사용자</option>
-                          <option value="admin">관리자</option>
-                        </select>
+                        <div className="w-24">
+                          <Select
+                            value={user.role}
+                            onChange={(e) => handleRoleChange(user.id, e.target.value as 'admin' | 'user')}
+                            disabled={user.id === currentUser.id}
+                            className="text-sm"
+                            options={[
+                              { value: "user", label: "사용자" },
+                              { value: "admin", label: "관리자" }
+                            ]}
+                          />
+                        </div>
                         <Button
                           onClick={() => handleDeleteUser(user.id, user.email)}
                           variant="danger"

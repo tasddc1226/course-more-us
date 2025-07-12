@@ -3,7 +3,7 @@ import { useLoaderData, useActionData, Link, useNavigation, useFetcher } from '@
 import { useState } from 'react'
 import { getCategories, getTimeSlots } from '~/lib/data.server'
 import { createUserPlaceFromLocation, getTodayPlaceCount, uploadPlaceImage, extractRegionFromAddress } from '~/lib/user-places.server'
-import { Button, Dropdown, type DropdownOption } from '~/components/ui'
+import { Button, Textarea, Dropdown, type DropdownOption } from '~/components/ui'
 import { ClientOnlyKakaoMap, PageHeader } from '~/components/common'
 import { ImageUpload, StarRating } from '~/components/forms'
 import { ROUTES } from '~/constants/routes'
@@ -441,15 +441,11 @@ export default function RegisterPlace() {
 
             {/* 한줄 설명 */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                한줄 추천 설명 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="description"
+              <Textarea
+                label="한줄 추천 설명"
                 name="description"
                 rows={3}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 placeholder="예: 데이트 마무리로 야경 보며 맥주 한잔하기 좋아요!"
                 defaultValue={actionData?.values?.description as string}
               />
