@@ -36,6 +36,18 @@ export const env = {
   // RESEND_API_KEY: isServer ? process.env.RESEND_API_KEY! : '',
   // RESEND_FROM_EMAIL: isServer ? process.env.RESEND_FROM_EMAIL! : '',
   // DEVELOPER_EMAIL: isServer ? process.env.DEVELOPER_EMAIL! : '',
+
+  // Perplexity AI 설정 (서버에서만 사용)
+  PERPLEXITY_API_KEY: isServer ? process.env.PERPLEXITY_API_KEY! : '',
+  
+  // AI 검색 기능 설정
+  ENABLE_SEARCH_RECOMMENDATIONS: isServer 
+    ? (process.env.ENABLE_SEARCH_RECOMMENDATIONS === 'true') 
+    : false,
+  
+  SEARCH_CACHE_DURATION: isServer 
+    ? parseInt(process.env.SEARCH_CACHE_DURATION || '60') 
+    : 60, // 기본 60분
 } as const;
 
 /**
