@@ -568,16 +568,16 @@ selectedPlace = topCandidates[randomIndex];
 
 The system successfully transformed from simple place recommendations to complete date course recommendations with optimized routing, theme-based generation, and comprehensive UI components. **추가로 동일한 장소 조합 중복 문제와 UI 겹침 문제가 해결되어 더욱 안정적이고 사용자 친화적인 시스템이 완성되었습니다.**
 
-## Phase 1.5: AI 통합 맞춤형 데이트 코스 추천 시스템 (기획)
+## Phase 1.5: AI 통합 맞춤형 데이트 코스 추천 시스템 (기획) - Perplexity API 활용
 
-### 🤖 AI 통합 개요
-현재 시스템은 미리 정의된 테마(로맨틱, 액티비티, 문화)로만 코스를 생성합니다. 이를 **OpenAI API**와 통합하여 사용자의 개인적 요청사항과 등록된 장소 정보를 결합한 진정한 맞춤형 AI 데이트 코스 추천 시스템으로 업그레이드합니다.
+### 🔍 Perplexity AI 통합 개요
+현재 시스템은 미리 정의된 테마(로맨틱, 액티비티, 문화)로만 코스를 생성합니다. 이를 **Perplexity API**와 통합하여 실시간 검색 정보와 사용자의 개인적 요청사항, 등록된 장소 정보를 결합한 진정한 맞춤형 AI 데이트 코스 추천 시스템으로 업그레이드합니다.
 
 ### 🎯 핵심 목표
 1. **개인화된 추천**: "조용한 곳에서 책 얘기하며 데이트하고 싶어요" 같은 자연어 요청 처리
-2. **지역 정보 활용**: 등록된 장소 데이터와 AI 지식 결합
-3. **창의적 코스 구성**: 고정된 테마를 벗어난 유니크한 코스 생성
-4. **상황별 최적화**: 날씨, 시간대, 예산 등을 종합 고려
+2. **실시간 정보 활용**: 최신 맛집 리뷰, 이벤트, 날씨 정보 반영
+3. **지역 특화 검색**: 해당 지역의 실시간 트렌드와 추천 장소 발굴
+4. **상황별 최적화**: 날씨, 시간대, 예산, 계절 이벤트 등을 종합 고려
 
 ### 🏗️ 시스템 아키텍처
 
@@ -588,7 +588,7 @@ The system successfully transformed from simple place recommendations to complet
   <FormField label="어떤 데이트를 원하시나요? (선택사항)">
     <Textarea
       placeholder="예: 조용하고 아늑한 곳에서 대화 중심의 데이트를 하고 싶어요. 
-      카페에서 시작해서 산책하기 좋은 곳으로 이어지면 좋겠어요."
+      최근에 핫한 맛집도 포함해서 추천해주세요."
       maxLength={500}
       rows={4}
     />
@@ -606,20 +606,31 @@ The system successfully transformed from simple place recommendations to complet
   <FormField label="예산 범위">
     <Select options={BUDGET_RANGES} />
   </FormField>
+  
+  <div className="real-time-options">
+    <label>
+      <input type="checkbox" /> 최신 트렌드 반영
+    </label>
+    <label>
+      <input type="checkbox" /> 실시간 리뷰 기반 추천
+    </label>
+  </div>
 </section>
 ```
 
-#### 2. OpenAI API 통합 설계
+#### 2. Perplexity API 통합 설계
 
-##### 2.1 시스템 프롬프트 구성
+##### 2.1 검색 기반 프롬프트 구성
 ```typescript
-interface AICoursePlanningRequest {
+interface PerplexityCoursePlanningRequest {
   userRequest: string; // 사용자의 자연어 요청
   preferences: {
     interests: string[];
     budgetRange: { min: number; max: number };
     weatherCondition?: string;
     groupSize?: number;
+    includeTrends: boolean; // 최신 트렌드 반영 여부
+    includeReviews: boolean; // 실시간 리뷰 반영 여부
   };
   contextData: {
     selectedRegion: Region;
@@ -629,34 +640,46 @@ interface AICoursePlanningRequest {
   };
 }
 
-const SYSTEM_PROMPT = `
+const PERPLEXITY_SEARCH_PROMPT = `
 당신은 한국의 데이트 코스 전문 플래너입니다. 
-사용자의 요청과 제공된 지역 정보를 바탕으로 최적의 데이트 코스를 추천해주세요.
+실시간 검색 정보와 제공된 지역 정보를 바탕으로 최적의 데이트 코스를 추천해주세요.
 
-## 제공된 정보:
-- 지역: {region.name}
-- 날짜: {date} 
-- 시간대: {timeSlots}
-- 등록된 장소들: {places}
-- 사용자 요청: {userRequest}
+## 검색 및 분석 요청:
+1. "{region.name} 지역 최신 인기 데이트 코스 트렌드" 검색
+2. "{region.name} 지역 {timeSlots} 시간대 추천 장소" 검색  
+3. "{userRequest}" 관련 최신 장소 및 리뷰 검색
+4. "{date}" 날짜 주변 특별 이벤트나 계절 특성 검색
+
+## 제공된 기존 장소 정보:
+{availablePlaces}
+
+## 사용자 요청사항:
+- 요청: {userRequest}
 - 관심사: {interests}
 - 예산: {budgetRange}
+- 날짜: {date}
+- 시간대: {timeSlots}
 
 ## 추천 가이드라인:
-1. 등록된 장소를 우선적으로 활용하되, 필요시 추가 장소 제안 가능
-2. 시간 흐름에 따른 자연스러운 동선 구성
-3. 사용자의 성향과 요청사항을 최대한 반영
-4. 실제 이동 가능한 거리와 시간 고려
-5. 예산 범위 내에서 가성비 좋은 조합 추천
+1. 실시간 검색으로 발견한 최신 정보를 우선 활용
+2. 기존 등록된 장소와 새로 발견한 장소를 적절히 조합
+3. 최신 리뷰와 평점을 반영한 신뢰도 높은 추천
+4. 계절/날씨/이벤트 등 실시간 상황 고려
+5. 실제 이동 가능한 거리와 시간 고려
 
 ## 응답 형식:
 JSON 형태로 다음 구조를 따라 응답해주세요:
 {
+  "searchSummary": {
+    "trendingPlaces": ["검색으로 발견한 인기 장소들"],
+    "seasonalEvents": ["해당 시기 특별 이벤트"],
+    "weatherConsiderations": "날씨 관련 고려사항"
+  },
   "recommendedCourse": {
     "name": "코스명",
     "theme": "추천 테마",
-    "description": "코스 설명 (100자 내외)",
-    "reasoning": "이 코스를 추천하는 이유",
+    "description": "코스 설명 (실시간 정보 반영)",
+    "reasoning": "이 코스를 추천하는 이유 (검색 근거 포함)",
     "places": [
       {
         "name": "장소명",
@@ -664,137 +687,166 @@ JSON 형태로 다음 구조를 따라 응답해주세요:
         "timeSlot": "시간대",
         "duration": 60,
         "isRegistered": true/false,
-        "reason": "선택 이유",
-        "specialTips": "특별한 팁이나 주의사항"
+        "searchInfo": {
+          "recentReview": "최신 리뷰 요약",
+          "trendScore": 85,
+          "recommendationReason": "검색 기반 추천 이유"
+        },
+        "specialTips": "최신 정보 기반 특별 팁"
       }
     ],
-    "additionalSuggestions": [
-      "날씨가 좋다면 야외 산책 코스 추가 추천",
-      "예산을 더 절약하려면 A 대신 B 장소 고려"
+    "realTimeAdvice": [
+      "현재 상황 기반 실시간 조언들"
     ]
   }
 }
 `;
 ```
 
-##### 2.2 AI 통합 서비스 구현
+##### 2.2 Perplexity API 통합 서비스 구현
 ```typescript
-// app/lib/ai-course.server.ts
-export async function generateAICourse(
-  request: AICoursePlanningRequest
-): Promise<AICourseResponse> {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+// app/lib/perplexity-course.server.ts
+export async function generatePerplexityCourse(
+  request: PerplexityCoursePlanningRequest
+): Promise<PerplexityCourseResponse> {
+  const perplexity = new PerplexityAPI({
+    apiKey: process.env.PERPLEXITY_API_KEY
   });
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4-turbo-preview",
+  const searchQuery = buildSearchQuery(request);
+  
+  const completion = await perplexity.chat.completions.create({
+    model: "llama-3.1-sonar-large-128k-online", // 온라인 검색 모델
     messages: [
       {
         role: "system",
-        content: buildSystemPrompt(request.contextData)
+        content: buildPerplexitySystemPrompt(request.contextData)
       },
       {
         role: "user", 
-        content: buildUserPrompt(request)
+        content: searchQuery
       }
     ],
     temperature: 0.7,
-    max_tokens: 2000
+    max_tokens: 3000,
+    search_domain_filter: ["korean"], // 한국 도메인 우선 검색
+    return_citations: true // 검색 출처 반환
   });
 
-  return parseAIResponse(completion.choices[0].message.content);
+  return parsePerplexityResponse(completion.choices[0].message.content);
+}
+
+function buildSearchQuery(request: PerplexityCoursePlanningRequest): string {
+  const { userRequest, contextData, preferences } = request;
+  
+  return `
+${contextData.selectedRegion.name} 지역에서 ${contextData.selectedDate} 날짜에 
+${contextData.selectedTimeSlots.map(t => t.name).join(', ')} 시간대에 
+"${userRequest}" 이런 데이트를 하고 싶습니다.
+
+예산은 ${preferences.budgetRange.min}원~${preferences.budgetRange.max}원이고,
+관심사는 ${preferences.interests.join(', ')}입니다.
+
+${preferences.includeTrends ? '최신 트렌드와 인기 장소를 포함해서' : ''} 
+${preferences.includeReviews ? '실시간 리뷰와 평점이 좋은 곳들을 중심으로' : ''}
+실용적이고 구체적인 데이트 코스를 추천해주세요.
+  `.trim();
 }
 ```
 
 #### 3. 하이브리드 코스 생성 시스템
 
 ```typescript
-// 기존 알고리즘 + AI 추천 결합
-export async function generateHybridCourses(
+// 기존 알고리즘 + Perplexity 검색 결합
+export async function generateHybridCoursesWithSearch(
   request: CourseGenerationRequest,
-  aiRequest?: AICoursePlanningRequest
+  perplexityRequest?: PerplexityCoursePlanningRequest
 ): Promise<CourseGenerationResponse> {
   const courses: DateCourse[] = [];
 
-  // 1. 기존 테마별 코스 생성 (빠른 대안)
+  // 1. 기존 테마별 코스 생성 (빠른 기본 옵션)
   const traditionalCourses = await generateMultipleThemeCourses(
     places, timeSlots, request
   );
-  courses.push(...traditionalCourses);
-
-  // 2. AI 맞춤 코스 생성 (사용자 요청이 있는 경우)
-  if (aiRequest?.userRequest) {
+  
+  // 2. Perplexity 검색 기반 AI 코스 생성
+  if (perplexityRequest?.userRequest) {
     try {
-      const aiCourse = await generateAICourse(aiRequest);
-      const convertedCourse = await convertAICourseToDomainCourse(
-        aiCourse, places, timeSlots
+      const searchCourse = await generatePerplexityCourse(perplexityRequest);
+      const convertedCourse = await convertSearchCourseToDomainCourse(
+        searchCourse, places, timeSlots
       );
       
       if (convertedCourse) {
-        courses.unshift(convertedCourse); // AI 코스를 맨 앞에 배치
+        // 검색 기반 코스를 맨 앞에 배치 (최우선)
+        courses.unshift({
+          ...convertedCourse,
+          isAIRecommended: true,
+          searchInfo: searchCourse.searchSummary,
+          citations: searchCourse.citations
+        });
       }
     } catch (error) {
-      console.error('AI 코스 생성 실패:', error);
-      // AI 실패 시 기존 코스로 폴백
+      console.error('Perplexity 코스 생성 실패:', error);
+      // 검색 실패 시 기존 코스로 폴백
     }
   }
 
+  // 3. 기존 코스들 추가 (중복 제거 후)
+  const uniqueTraditionalCourses = filterDuplicateCourses(
+    traditionalCourses, courses
+  );
+  courses.push(...uniqueTraditionalCourses);
+
   return {
     courses: courses.slice(0, 4),
-    aiRecommendation: aiRequest ? true : false,
+    hasSearchResults: !!perplexityRequest?.userRequest,
+    searchMetadata: perplexityRequest ? {
+      includedTrends: perplexityRequest.preferences.includeTrends,
+      includedReviews: perplexityRequest.preferences.includeReviews,
+      searchTimestamp: new Date().toISOString()
+    } : undefined,
     generationId: generateUniqueId()
   };
 }
-```
-
-#### 4. 데이터 플로우
-
-```mermaid
-graph TD
-    A[사용자 입력] --> B{AI 요청 포함?}
-    B -->|Yes| C[AI 프롬프트 구성]
-    B -->|No| F[기존 알고리즘]
-    
-    C --> D[OpenAI API 호출]
-    D --> E[AI 응답 파싱]
-    E --> G[AI + 기존 코스 결합]
-    
-    F --> G
-    G --> H[최종 코스 목록]
-    H --> I[사용자에게 표시]
 ```
 
 ### 🔧 기술적 구현 계획
 
 #### 1. 환경 설정
 ```bash
-# OpenAI API 키 추가
-OPENAI_API_KEY=sk-xxx...
+# Perplexity API 키 추가
+PERPLEXITY_API_KEY=pplx-xxx...
 
-# AI 기능 활성화 플래그
-ENABLE_AI_RECOMMENDATIONS=true
+# AI 검색 기능 활성화 플래그
+ENABLE_SEARCH_RECOMMENDATIONS=true
+
+# 검색 결과 캐싱 시간 (분)
+SEARCH_CACHE_DURATION=60
 ```
 
 #### 2. 새로운 컴포넌트
 ```typescript
-// AIRequestForm.tsx - AI 요청 입력 폼
-// InterestTagSelector.tsx - 관심사 태그 선택
-// AICourseBadge.tsx - AI 추천 코스 표시 배지
-// CourseReasoningModal.tsx - AI 추천 이유 상세 보기
+// AISearchRequestForm.tsx - 검색 기반 AI 요청 입력 폼
+// SearchResultsBadge.tsx - 검색 결과 기반 추천 표시 배지
+// TrendingPlacesPreview.tsx - 검색으로 발견한 트렌딩 장소 미리보기
+// CitationModal.tsx - 검색 출처 및 근거 상세 보기
+// RealTimeAdviceCard.tsx - 실시간 조언 카드
 ```
 
 #### 3. API 엔드포인트 확장
 ```typescript
 // 기존: POST /api/courses/generate
-// 확장: AI 요청 파라미터 추가 지원
+// 확장: Perplexity 검색 요청 파라미터 추가 지원
 
 interface ExtendedCourseRequest {
   // 기존 필드들...
-  aiRequest?: {
+  searchRequest?: {
     userRequest: string;
     interests: string[];
     budgetRange: { min: number; max: number };
+    includeTrends: boolean;
+    includeReviews: boolean;
   };
 }
 ```
@@ -802,50 +854,74 @@ interface ExtendedCourseRequest {
 ### 📊 성능 및 비용 고려사항
 
 #### 1. API 호출 최적화
-- **캐싱 전략**: 유사한 요청에 대한 응답 캐싱 (Redis)
-- **요청 제한**: 사용자당 일일 AI 요청 제한 (5-10회)
-- **폴백 시스템**: AI 실패 시 기존 알고리즘으로 즉시 대체
+- **캐싱 전략**: 유사한 검색 요청에 대한 응답 캐싱 (60분)
+- **요청 제한**: 사용자당 일일 검색 요청 제한 (10-15회)
+- **폴백 시스템**: 검색 실패 시 기존 알고리즘으로 즉시 대체
 
 #### 2. 비용 관리
-- **예상 비용**: GPT-4 기준 요청당 약 $0.01-0.03
-- **일일 예산**: $10-20 (300-2000 요청)
-- **모니터링**: API 사용량 실시간 추적
+- **예상 비용**: Perplexity 기준 요청당 약 $0.005-0.02
+- **일일 예산**: $5-15 (250-3000 요청)
+- **모니터링**: 검색 API 사용량 실시간 추적
 
 #### 3. 사용자 경험
-- **로딩 시간**: AI 응답 대기 중 기존 코스 먼저 표시
-- **에러 처리**: AI 실패 시 사용자에게 자연스럽게 기존 추천 제공
-- **피드백 수집**: AI 추천 만족도 조사
+- **로딩 시간**: 검색 응답 대기 중 기존 코스 먼저 표시
+- **에러 처리**: 검색 실패 시 사용자에게 자연스럽게 기존 추천 제공
+- **검색 근거 표시**: 추천 이유와 함께 검색 출처 제공
 
 ### 🎨 UI/UX 개선사항
 
-#### 1. AI 코스 차별화 표시
+#### 1. 검색 기반 코스 차별화 표시
 ```tsx
-// AI 추천 코스에 특별한 표시
+// 검색 기반 추천 코스에 특별한 표시
 <CourseCard 
   course={course}
-  isAIRecommended={true}
-  aiReasoning={course.aiReasoning}
+  isSearchRecommended={true}
+  searchInfo={course.searchInfo}
+  citations={course.citations}
 />
 
-// AI 배지
-{isAIRecommended && (
-  <div className="ai-badge">
-    <span className="icon">🤖</span>
-    <span>AI 맞춤 추천</span>
+// 검색 배지
+{isSearchRecommended && (
+  <div className="search-badge">
+    <span className="icon">🔍</span>
+    <span>실시간 검색 추천</span>
+    <span className="trend-indicator">HOT</span>
   </div>
 )}
 ```
 
-#### 2. 추천 이유 상세 보기
+#### 2. 검색 근거 및 출처 표시
 ```tsx
-// 클릭 시 AI 추천 이유 모달 표시
-<Modal title="AI가 이 코스를 추천한 이유">
-  <div className="reasoning-content">
-    <p>{aiReasoning}</p>
-    <div className="tips">
-      <h4>특별 팁</h4>
+// 클릭 시 검색 근거 모달 표시
+<Modal title="실시간 검색 기반 추천 근거">
+  <div className="search-reasoning-content">
+    <div className="trending-info">
+      <h4>🔥 현재 트렌드</h4>
       <ul>
-        {specialTips.map(tip => <li key={tip}>{tip}</li>)}
+        {searchInfo.trendingPlaces.map(place => 
+          <li key={place}>{place}</li>
+        )}
+      </ul>
+    </div>
+    
+    <div className="citations">
+      <h4>📚 검색 출처</h4>
+      {citations.map(citation => (
+        <div key={citation.url} className="citation-item">
+          <a href={citation.url} target="_blank">
+            {citation.title}
+          </a>
+          <span className="source">{citation.domain}</span>
+        </div>
+      ))}
+    </div>
+    
+    <div className="real-time-advice">
+      <h4>💡 실시간 조언</h4>
+      <ul>
+        {realTimeAdvice.map(advice => 
+          <li key={advice}>{advice}</li>
+        )}
       </ul>
     </div>
   </div>
@@ -855,29 +931,29 @@ interface ExtendedCourseRequest {
 ### 🔄 구현 단계
 
 #### Phase 1.5.1: 기반 구조 (1일)
-1. OpenAI API 통합 설정
-2. AI 요청 인터페이스 정의
+1. Perplexity API 통합 설정
+2. 검색 요청 인터페이스 정의
 3. 시스템 프롬프트 초안 작성
 
-#### Phase 1.5.2: 코어 AI 기능 (2일)
-1. AI 코스 생성 로직 구현
+#### Phase 1.5.2: 코어 검색 기능 (2일)
+1. 검색 기반 코스 생성 로직 구현
 2. 하이브리드 코스 생성 시스템
 3. 에러 처리 및 폴백 로직
 
 #### Phase 1.5.3: UI 통합 (1일)
-1. AI 요청 폼 컴포넌트
-2. AI 코스 표시 개선
-3. 추천 이유 상세 보기
+1. 검색 요청 폼 컴포넌트
+2. 검색 코스 표시 개선
+3. 검색 근거 및 출처 상세 보기
 
 #### Phase 1.5.4: 최적화 및 테스트 (1일)
-1. 캐싱 시스템 구현
+1. 검색 결과 캐싱 시스템 구현
 2. 성능 테스트 및 튜닝
-3. 사용자 테스트 및 피드백 수집
+3. 실시간 검색 품질 테스트
 
 ### 🎯 기대 효과
-1. **개인화 향상**: 사용자별 맞춤형 추천으로 만족도 증가
-2. **차별화**: AI 통합으로 경쟁 서비스 대비 독특한 가치 제공
-3. **사용자 참여**: 자연어 요청으로 더 쉽고 재미있는 상호작용
-4. **데이터 수집**: 사용자 선호도 학습을 통한 서비스 개선
+1. **실시간 정보**: 최신 맛집, 이벤트, 트렌드 반영으로 추천 정확도 향상
+2. **검색 기반 신뢰성**: 실제 리뷰와 검증된 정보 기반 추천
+3. **지역 특화**: 해당 지역의 실시간 상황과 특성 반영
+4. **개인화 강화**: 자연어 요청과 실시간 검색 결합으로 맞춤형 서비스
 
-이를 통해 단순한 장소 추천을 넘어 **진정한 AI 데이트 컨시어지 서비스**로 발전할 수 있습니다.
+이를 통해 **실시간 검색 기반의 진정한 AI 데이트 컨시어지 서비스**로 발전할 수 있습니다.
