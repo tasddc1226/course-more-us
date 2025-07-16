@@ -1,4 +1,4 @@
- import { createSupabaseServerClient, supabaseAdmin } from './supabase.server'
+import { createSupabaseServerClient, supabaseAdmin } from './supabase.server'
 import { getCachedData, setCachedData, invalidateRegionsCache } from './cache.server'
 
 // 모든 지역 조회 (사용자용) - 캐싱 적용
@@ -55,6 +55,37 @@ export async function getCategories(request: Request) {
     .order('name')
 
   if (error) throw error
+  return data
+}
+
+// 특정 지역 조회 (ID로) - 캐싱 적용
+export async function getRegionById(request: Request, regionId: number) {
+  const cacheKey = `region_${regionId}`
+  const cached = getCachedData(cacheKey)
+  
+  if (cached) {
+    return cached
+  }
+
+  const supabase = createSupabaseServerClient(request)
+  
+  const { data, error } = await supabase
+    .from('regions')
+    .select('*')
+    .eq('id', regionId)
+    .single()
+
+  if (error) {
+    console.error(`지역 ID ${regionId} 조회 실패:`, error)
+    // 실패 시 기본값 반환
+    return {
+      id: regionId,
+      name: '알 수 없는 지역',
+      slug: 'unknown'
+    }
+  }
+  
+  setCachedData(cacheKey, data)
   return data
 }
 

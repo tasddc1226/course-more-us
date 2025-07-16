@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import Textarea from './Textarea'
 
 interface FeedbackModalProps {
   isOpen: boolean
@@ -75,14 +76,15 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting = false 
             피드백이나 제안사항을 입력해주세요
           </p>
           
-          <textarea
+          <Textarea
             ref={textareaRef}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="개선사항이나 버그 신고, 새로운 기능 제안 등을 자유롭게 작성해주세요."
-            className="w-full h-32 p-3 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+            className="h-32 resize-none text-sm"
             disabled={isSubmitting}
             maxLength={1000}
+            resize="none"
           />
           
           <div className="flex justify-between items-center mt-2">

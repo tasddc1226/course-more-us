@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -35,6 +34,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_recommended_places: {
+        Row: {
+          ai_search_log_id: number | null
+          category: string | null
+          created_at: string | null
+          duration: number | null
+          id: number
+          matched_place_id: number | null
+          matching_confidence: number | null
+          place_name: string
+          search_info: Json | null
+          special_tips: string | null
+          time_slot: string | null
+        }
+        Insert: {
+          ai_search_log_id?: number | null
+          category?: string | null
+          created_at?: string | null
+          duration?: number | null
+          id?: number
+          matched_place_id?: number | null
+          matching_confidence?: number | null
+          place_name: string
+          search_info?: Json | null
+          special_tips?: string | null
+          time_slot?: string | null
+        }
+        Update: {
+          ai_search_log_id?: number | null
+          category?: string | null
+          created_at?: string | null
+          duration?: number | null
+          id?: number
+          matched_place_id?: number | null
+          matching_confidence?: number | null
+          place_name?: string
+          search_info?: Json | null
+          special_tips?: string | null
+          time_slot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_recommended_places_ai_search_log_id_fkey"
+            columns: ["ai_search_log_id"]
+            isOneToOne: false
+            referencedRelation: "ai_search_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_recommended_places_matched_place_id_fkey"
+            columns: ["matched_place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_search_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: number
+          is_successful: boolean
+          perplexity_citations: string[] | null
+          recommended_places_count: number | null
+          search_duration_ms: number | null
+          search_request: Json
+          search_response: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          is_successful?: boolean
+          perplexity_citations?: string[] | null
+          recommended_places_count?: number | null
+          search_duration_ms?: number | null
+          search_request: Json
+          search_response?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          is_successful?: boolean
+          perplexity_citations?: string[] | null
+          recommended_places_count?: number | null
+          search_duration_ms?: number | null
+          search_request?: Json
+          search_response?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string | null
