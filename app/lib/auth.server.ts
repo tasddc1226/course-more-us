@@ -14,10 +14,13 @@ export async function requireAuth(request: Request) {
     if (error || !user) {
       const url = new URL(request.url)
       const redirectTo = url.pathname + url.search
-      throw redirect(`${ROUTES.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`)
+      return { 
+        user: null, 
+        response: redirect(`${ROUTES.LOGIN}?redirectTo=${encodeURIComponent(redirectTo)}`)
+      }
     }
 
-    return { user, supabase }
+    return { user, response: null }
   } catch (error) {
     console.error('RequireAuth catch error:', error)
     // redirect Response는 그대로 던져줌
@@ -25,7 +28,10 @@ export async function requireAuth(request: Request) {
       throw error
     }
     // 다른 에러는 홈으로 리다이렉트
-    throw redirect(`${ROUTES.HOME}?error=auth_failed`)
+    return { 
+      user: null, 
+      response: redirect(`${ROUTES.HOME}?error=auth_failed`)
+    }
   }
 }
 

@@ -19,7 +19,9 @@ export const meta: MetaFunction = () => {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { user } = await requireAuth(request)
+  const { user, response } = await requireAuth(request)
+  if (!user) return response
+  
   const profile = await getUserProfile(request)
   
   return json({ 
@@ -59,7 +61,8 @@ export async function action({ request }: ActionFunctionArgs) {
         if (!reason || reason.trim().length === 0 || reason.trim().length > 10) {
           return json({ error: '탈퇴 사유를 1~10자로 입력해주세요.' }, { status: 400 })
         }
-        const { user } = await requireAuth(request)
+        const { user, response: authResponse } = await requireAuth(request)
+        if (!user) return authResponse
 
         // 세션 쿠키 삭제를 위해 response 객체 전달
         const response = new Response()

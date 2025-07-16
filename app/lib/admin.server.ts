@@ -8,10 +8,11 @@ type PlaceUpdate = Database['public']['Tables']['places']['Update']
 
 // 관리자 권한 확인
 export async function requireAdmin(request: Request) {
-  const { user, supabase } = await requireAuth(request)
+  const { user, response } = await requireAuth(request)
+  if (!user) throw response
   
   // 사용자 역할 확인
-  const { data: userRole, error: roleError } = await supabase
+  const { data: userRole, error: roleError } = await supabaseAdmin
     .from('user_roles')
     .select('role')
     .eq('user_id', user.id)
@@ -21,16 +22,17 @@ export async function requireAdmin(request: Request) {
     throw redirect("/?error=unauthorized")
   }
   
-  return { user, supabase }
+  return { user }
 }
 
 // 관리자 권한 확인 (boolean 반환)
 export async function isAdmin(request: Request): Promise<boolean> {
   try {
-    const { user, supabase } = await requireAuth(request)
+    const { user, response } = await requireAuth(request)
+    if (!user) return false
     
     // 사용자 역할 확인
-    const { data: userRole, error: roleError } = await supabase
+    const { data: userRole, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)

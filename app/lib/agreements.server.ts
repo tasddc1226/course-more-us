@@ -22,9 +22,10 @@ export interface AgreementUpdate {
 
 // 사용자 동의 정보 조회
 export async function getUserAgreements(request: Request): Promise<UserAgreement | null> {
-  const { user, supabase } = await requireAuth(request)
+  const { user, response } = await requireAuth(request)
+  if (!user) throw response
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_agreements')
     .select('*')
     .eq('user_id', user.id)
@@ -42,7 +43,8 @@ export async function upsertUserAgreements(
   request: Request, 
   agreements: AgreementUpdate
 ): Promise<UserAgreement> {
-  const { user } = await requireAuth(request)
+  const { user, response } = await requireAuth(request)
+  if (!user) throw response
   
   // 기존 동의 정보 조회
   const currentAgreements = await getUserAgreements(request)

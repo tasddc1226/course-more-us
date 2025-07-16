@@ -902,7 +902,7 @@ function generateSearchCourseTags(
   
   // 장소 카테고리 기반 태그
   const categories = recommendedCourse.places?.map((p) => p.category).filter(Boolean) || [];
-  const uniqueCategories = [...new Set(categories)];
+  const uniqueCategories = [...new Set(categories)].filter((cat): cat is string => cat !== undefined);
   tags.push(...uniqueCategories);
   
   // 실시간 검색 태그

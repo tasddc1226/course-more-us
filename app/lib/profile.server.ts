@@ -6,8 +6,8 @@ export type UserProfile = {
   nickname: string | null;
   bio: string | null;
   avatar_url: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export type UpdateProfileData = {
@@ -20,7 +20,9 @@ export type UpdateProfileData = {
  * 사용자 프로필 조회
  */
 export async function getUserProfile(request: Request): Promise<UserProfile | null> {
-  const { user } = await requireAuth(request);
+  const { user, response } = await requireAuth(request);
+  if (!user) throw response;
+  
   const supabase = createSupabaseServerClient(request);
 
   const { data, error } = await supabase
@@ -44,7 +46,9 @@ export async function updateUserProfile(
   request: Request, 
   profileData: UpdateProfileData
 ): Promise<UserProfile> {
-  const { user } = await requireAuth(request);
+  const { user, response } = await requireAuth(request);
+  if (!user) throw response;
+  
   const supabase = createSupabaseServerClient(request);
 
   // 닉네임 중복 확인
@@ -83,7 +87,9 @@ export async function isNicknameAvailable(
   request: Request, 
   nickname: string
 ): Promise<boolean> {
-  const { user } = await requireAuth(request);
+  const { user, response } = await requireAuth(request);
+  if (!user) throw response;
+  
   const supabase = createSupabaseServerClient(request);
 
   const { data } = await supabase
