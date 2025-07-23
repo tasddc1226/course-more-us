@@ -15,6 +15,7 @@ import type { CourseGenerationResponse, CoursePlaceInfo } from "~/types/course";
 import { SearchBar } from "~/components/common";
 import { LoadingSkeleton } from "~/components/recommendation";
 import { CourseCard, CourseDetail } from "~/components/course";
+import { AdvancedFilterPanel, type AdvancedFilters } from "~/components/filters";
 import { useState } from "react";
 
 export const meta: MetaFunction = () => {
@@ -277,6 +278,10 @@ export default function Index() {
   // 선택된 코스 상태 관리
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   
+  // 고급 필터 상태 관리
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<AdvancedFilters | null>(null);
+  
   // 지역 옵션 변환
   const regionOptions: DropdownOption[] = regions.map(region => ({
     value: String(region.id),
@@ -515,6 +520,16 @@ export default function Index() {
                 '맞춤 데이트 코스 추천받기 💕'
               )}
             </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterOpen(true)}
+              className="w-full"
+            >
+              🔍 고급 필터 설정
+            </Button>
           </Form>
           
           <p className="text-xs text-purple-500 mt-4">
@@ -640,6 +655,17 @@ export default function Index() {
           </div>
         ) : null}
       </main>
+      
+      {/* 고급 필터 패널 */}
+      <AdvancedFilterPanel
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApplyFilters={(filters) => {
+          setAppliedFilters(filters);
+          setIsFilterOpen(false);
+          console.log('적용된 필터:', filters);
+        }}
+      />
     </div>
   );
 }
