@@ -2,6 +2,7 @@ import type { DateCourse } from '~/types/course';
 import { THEME_CONFIGS } from '~/types/course';
 import { useState } from 'react';
 import CourseMap from './CourseMap';
+import { CourseEditor } from '../course-editor';
 
 interface CourseDetailProps {
   course: DateCourse;
@@ -10,7 +11,8 @@ interface CourseDetailProps {
 }
 
 export function CourseDetail({ course, showMap = false, onClose }: CourseDetailProps) {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'places' | 'info'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'places' | 'info' | 'edit'>('timeline');
+  const [isEditing, setIsEditing] = useState(false);
   const themeConfig = THEME_CONFIGS[course.theme as keyof typeof THEME_CONFIGS];
 
   const formatDuration = (minutes: number) => {
@@ -371,7 +373,8 @@ export function CourseDetail({ course, showMap = false, onClose }: CourseDetailP
           {[
             { key: 'timeline', label: '타임라인', icon: '📅' },
             { key: 'places', label: '장소 목록', icon: '📍' },
-            { key: 'info', label: '코스 정보', icon: 'ℹ️' }
+            { key: 'info', label: '코스 정보', icon: 'ℹ️' },
+            { key: 'edit', label: '편집', icon: '✏️' }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -394,6 +397,20 @@ export function CourseDetail({ course, showMap = false, onClose }: CourseDetailP
         {activeTab === 'timeline' && renderTimelineView()}
         {activeTab === 'places' && renderPlacesView()}
         {activeTab === 'info' && renderInfoView()}
+        {activeTab === 'edit' && (
+          <CourseEditor
+            course={course}
+            onSave={(editedCourse) => {
+              console.log('코스 편집 완료:', editedCourse);
+              setIsEditing(false);
+              setActiveTab('timeline');
+            }}
+            onCancel={() => {
+              setIsEditing(false);
+              setActiveTab('timeline');
+            }}
+          />
+        )}
       </div>
     </div>
   );

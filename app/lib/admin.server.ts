@@ -1,7 +1,7 @@
 import { requireAuth } from './auth.server'
 import { redirect } from "@remix-run/node"
 import type { Database } from '~/types/database.types'
-import { supabaseAdmin } from './supabase.server'
+import { supabaseAdmin, createSupabaseServerClient } from './supabase.server'
 
 type PlaceInsert = Database['public']['Tables']['places']['Insert']
 type PlaceUpdate = Database['public']['Tables']['places']['Update']
@@ -46,7 +46,8 @@ export async function isAdmin(request: Request): Promise<boolean> {
 
 // 모든 장소 조회 (관리자용 - 비활성 장소도 포함)
 export async function getAllPlaces(request: Request) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
+  const supabase = createSupabaseServerClient(request)
   
   const { data, error } = await supabase
     .from('places')
@@ -63,7 +64,8 @@ export async function getAllPlaces(request: Request) {
 
 // 장소 상세 조회
 export async function getPlaceById(request: Request, id: number) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
+  const supabase = createSupabaseServerClient(request)
   
   const { data, error } = await supabase
     .from('places')

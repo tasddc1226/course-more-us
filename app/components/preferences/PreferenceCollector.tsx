@@ -105,7 +105,7 @@ export function PreferenceCollector({ isOpen, onClose, onComplete }: PreferenceC
   const prevStep = () => setStep(prev => prev - 1);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="large">
+    <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-6">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
