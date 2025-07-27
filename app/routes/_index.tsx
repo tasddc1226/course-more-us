@@ -642,7 +642,6 @@ export default function Index() {
                   return course ? (
                     <CourseDetail
                       course={course}
-                      showMap={true}
                       onClose={() => setSelectedCourse(null)}
                     />
                   ) : null;
