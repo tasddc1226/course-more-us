@@ -6,13 +6,11 @@ import { CourseEditor } from '../course-editor';
 
 interface CourseDetailProps {
   course: DateCourse;
-  showMap?: boolean;
   onClose?: () => void;
 }
 
-export function CourseDetail({ course, showMap = false, onClose }: CourseDetailProps) {
+export function CourseDetail({ course, onClose }: CourseDetailProps) {
   const [activeTab, setActiveTab] = useState<'timeline' | 'places' | 'info' | 'edit'>('timeline');
-  const [isEditing, setIsEditing] = useState(false);
   const themeConfig = THEME_CONFIGS[course.theme as keyof typeof THEME_CONFIGS];
 
   const formatDuration = (minutes: number) => {

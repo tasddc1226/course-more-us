@@ -141,8 +141,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (userRequest) {
     // AI 검색 모드
-    console.log('🤖 AI 검색 요청 처리 시작');
-    console.log('사용자 요청:', userRequest);
+    // AI 검색 요청 처리 시작
     
     try {
       // 사용자가 입력한 지역과 시간대 사용
@@ -155,9 +154,7 @@ export async function action({ request }: ActionFunctionArgs) {
       const aiDate = date || new Date().toISOString().split('T')[0];
       const aiTimeSlotIds = timeSlotIds.length > 0 ? timeSlotIds : [3, 4, 5];
       
-      console.log('사용자 지역 ID:', aiRegionId);
-      console.log('사용자 날짜:', aiDate);
-      console.log('사용자 시간대 IDs:', aiTimeSlotIds);
+      // 사용자 설정값: 지역 ID, 날짜, 시간대 IDs
       
       const courseResult = await generateHybridDateCourses(request, {
         regionId: aiRegionId,
@@ -663,7 +660,7 @@ export default function Index() {
         onApplyFilters={(filters) => {
           setAppliedFilters(filters);
           setIsFilterOpen(false);
-          console.log('적용된 필터:', filters);
+          // 필터 적용됨
         }}
       />
     </div>

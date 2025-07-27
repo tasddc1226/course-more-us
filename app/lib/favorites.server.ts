@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from './supabase.server'
 import { getUser } from './auth.server'
-import type { Tables, TablesInsert } from '~/types/database.types'
+import type { Tables } from '~/types/database.types'
 
 export type UserFavorite = Tables<'user_favorites'>
 

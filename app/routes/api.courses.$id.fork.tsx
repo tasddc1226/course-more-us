@@ -34,7 +34,7 @@ export const action: ActionFunction = async ({ request, params }) => {
       redirectUrl: `/courses/${newCourseId}/edit`
     });
   } catch (error) {
-    console.error("Error forking course:", error);
+    // Server error during course forking
     return json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 };

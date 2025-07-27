@@ -44,7 +44,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     
     return json({ success: true });
   } catch (error) {
-    console.error("Error editing course:", error);
+    // Server error during course editing
     return json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 };

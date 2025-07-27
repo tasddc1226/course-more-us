@@ -1,7 +1,7 @@
 import { json, type ActionFunction } from "@remix-run/node";
 import { requireUser } from "~/lib/auth.server";
 import { generateDateCourses } from "~/lib/course.server";
-import { getUserPreferences, calculatePreferenceScore } from "~/lib/preferences.server";
+import { getUserPreferences } from "~/lib/preferences.server";
 import { createClient } from "~/lib/supabase.server";
 import type { AdvancedFilters } from "~/types/preferences";
 
@@ -31,8 +31,8 @@ export const action: ActionFunction = async ({ request }) => {
     // Supabase 클라이언트 생성
     const supabase = createClient(request);
     
-    // 사용자 선호도 조회
-    const preferences = await getUserPreferences(supabase, user.id);
+    // 사용자 선호도 조회 (현재 미사용)
+    // const preferences = await getUserPreferences(supabase, user.id);
     
     // 필터와 선호도를 적용한 코스 생성
     const result = await generateDateCourses(request, {
@@ -56,7 +56,7 @@ export const action: ActionFunction = async ({ request }) => {
       generationId: result.generationId
     });
   } catch (error) {
-    console.error("Error generating filtered course:", error);
+    // Server error during filtered course generation
     return json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 };

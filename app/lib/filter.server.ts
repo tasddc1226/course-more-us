@@ -19,11 +19,11 @@ export interface FilteredPlace {
 }
 
 export async function applyAdvancedFilters(
-  request: Request,
+  _request: Request,
   places: any[],
   filters: AdvancedFilters
 ): Promise<FilteredPlace[]> {
-  const supabase = createSupabaseServerClient(request);
+  // const supabase = createSupabaseServerClient(request); // Currently unused
   
   let filteredPlaces = [...places];
 
@@ -134,8 +134,8 @@ export async function applyAdvancedFilters(
   return scoredPlaces.sort((a, b) => b.score - a.score);
 }
 
-export async function getAccessibilityFeatures(request: Request) {
-  const supabase = createSupabaseServerClient(request);
+export async function getAccessibilityFeatures(_request: Request) {
+  // const supabase = createSupabaseServerClient(request); // Currently unused
   
   // 실제로는 데이터베이스에서 접근성 기능 목록을 가져와야 함
   // 현재는 하드코딩된 목록 반환

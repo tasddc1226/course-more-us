@@ -73,7 +73,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     
     return json({ filterOptions });
   } catch (error) {
-    console.error("Error fetching filter options:", error);
+    // Server error during filter options fetch
     return json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 };

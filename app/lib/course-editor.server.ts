@@ -1,4 +1,4 @@
-import { createClient } from '~/lib/supabase.server';
+// import { createClient } from '~/lib/supabase.server'; // Disabled until course_edit_history table available
 import type { DateCourse } from '~/types/course';
 
 // TODO: Re-enable when course_edit_history table is created in remote database
@@ -6,11 +6,11 @@ import type { DateCourse } from '~/types/course';
 
 // 코스 편집 이력 저장 - TEMPORARILY DISABLED
 export async function saveCourseEditHistory(
-  request: Request,
-  courseId: string,
-  userId: string,
-  originalCourse: DateCourse,
-  editedCourse: DateCourse
+  _request: Request,
+  _courseId: string,
+  _userId: string,
+  _originalCourse: DateCourse,
+  _editedCourse: DateCourse
 ): Promise<any | null> {
   // TODO: Re-enable when course_edit_history table is available
   console.warn('saveCourseEditHistory is temporarily disabled - course_edit_history table missing');
@@ -53,9 +53,9 @@ export async function saveCourseEditHistory(
 
 // 코스 편집 이력 조회 - TEMPORARILY DISABLED
 export async function getCourseEditHistory(
-  request: Request,
-  courseId: string,
-  userId: string
+  _request: Request,
+  _courseId: string,
+  _userId: string
 ): Promise<any[]> {
   // TODO: Re-enable when course_edit_history table is available
   console.warn('getCourseEditHistory is temporarily disabled - course_edit_history table missing');
@@ -90,8 +90,8 @@ export async function getCourseEditHistory(
 
 // 변경사항 계산 헬퍼 함수 - TEMPORARILY DISABLED
 export function calculateEditDiff(
-  originalCourse: DateCourse,
-  editedCourse: DateCourse
+  _originalCourse: DateCourse,
+  _editedCourse: DateCourse
 ): any {
   // TODO: Re-enable when course_edit_history table is available
   console.warn('calculateEditDiff is temporarily disabled');
@@ -132,9 +132,9 @@ export function calculateEditDiff(
 
 // TODO: Implement when course_edit_history table is available
 export async function saveEditedCourse(
-  request: Request,
-  courseId: string,
-  editedCourse: DateCourse
+  _request: Request,
+  _courseId: string,
+  _editedCourse: DateCourse
 ): Promise<any> {
   console.warn('saveEditedCourse is temporarily disabled');
   return null;
@@ -142,7 +142,7 @@ export async function saveEditedCourse(
 
 // TODO: Implement when course_edit_history table is available
 export async function validateEditedCourse(
-  courseData: DateCourse
+  _courseData: DateCourse
 ): Promise<{ isValid: boolean; errors: string[] }> {
   console.warn('validateEditedCourse is temporarily disabled');
   return { isValid: true, errors: [] };
@@ -150,10 +150,10 @@ export async function validateEditedCourse(
 
 // TODO: Implement when course_edit_history table is available
 export async function forkCourse(
-  request: Request,
-  originalCourseId: string,
-  userId: string,
-  newName?: string
+  _request: Request,
+  _originalCourseId: string,
+  _userId: string,
+  _newName?: string
 ): Promise<any> {
   console.warn('forkCourse is temporarily disabled');
   return null;
