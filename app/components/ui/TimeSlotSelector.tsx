@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { Tables } from '~/types/database.types';
 
 type TimeSlot = Tables<'time_slots'>;

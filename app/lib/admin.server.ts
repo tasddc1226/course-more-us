@@ -1,17 +1,18 @@
 import { requireAuth } from './auth.server'
 import { redirect } from "@remix-run/node"
 import type { Database } from '~/types/database.types'
-import { supabaseAdmin } from './supabase.server'
+import { supabaseAdmin, createSupabaseServerClient } from './supabase.server'
 
 type PlaceInsert = Database['public']['Tables']['places']['Insert']
 type PlaceUpdate = Database['public']['Tables']['places']['Update']
 
 // 관리자 권한 확인
 export async function requireAdmin(request: Request) {
-  const { user, supabase } = await requireAuth(request)
+  const { user, response } = await requireAuth(request)
+  if (!user) throw response
   
   // 사용자 역할 확인
-  const { data: userRole, error: roleError } = await supabase
+  const { data: userRole, error: roleError } = await supabaseAdmin
     .from('user_roles')
     .select('role')
     .eq('user_id', user.id)
@@ -21,16 +22,17 @@ export async function requireAdmin(request: Request) {
     throw redirect("/?error=unauthorized")
   }
   
-  return { user, supabase }
+  return { user }
 }
 
 // 관리자 권한 확인 (boolean 반환)
 export async function isAdmin(request: Request): Promise<boolean> {
   try {
-    const { user, supabase } = await requireAuth(request)
+    const { user, response } = await requireAuth(request)
+    if (!user) return false
     
     // 사용자 역할 확인
-    const { data: userRole, error: roleError } = await supabase
+    const { data: userRole, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
@@ -44,7 +46,8 @@ export async function isAdmin(request: Request): Promise<boolean> {
 
 // 모든 장소 조회 (관리자용 - 비활성 장소도 포함)
 export async function getAllPlaces(request: Request) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
+  const supabase = createSupabaseServerClient(request)
   
   const { data, error } = await supabase
     .from('places')
@@ -61,7 +64,8 @@ export async function getAllPlaces(request: Request) {
 
 // 장소 상세 조회
 export async function getPlaceById(request: Request, id: number) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
+  const supabase = createSupabaseServerClient(request)
   
   const { data, error } = await supabase
     .from('places')
@@ -80,9 +84,9 @@ export async function getPlaceById(request: Request, id: number) {
 
 // 장소 생성
 export async function createPlace(request: Request, placeData: PlaceInsert) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('places')
     .insert(placeData)
     .select()
@@ -94,9 +98,9 @@ export async function createPlace(request: Request, placeData: PlaceInsert) {
 
 // 장소 업데이트
 export async function updatePlace(request: Request, id: number, placeData: PlaceUpdate) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('places')
     .update(placeData)
     .eq('id', id)
@@ -109,9 +113,9 @@ export async function updatePlace(request: Request, id: number, placeData: Place
 
 // 장소 삭제
 export async function deletePlace(request: Request, id: number) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('places')
     .delete()
     .eq('id', id)
@@ -121,9 +125,9 @@ export async function deletePlace(request: Request, id: number) {
 
 // 지역 목록 조회
 export async function getRegions(request: Request) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('regions')
     .select('*')
     .order('name')
@@ -134,9 +138,9 @@ export async function getRegions(request: Request) {
 
 // 카테고리 목록 조회
 export async function getCategories(request: Request) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('categories')
     .select('*')
     .order('name')
@@ -147,9 +151,9 @@ export async function getCategories(request: Request) {
 
 // 시간대 목록 조회
 export async function getTimeSlots(request: Request) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('time_slots')
     .select('*')
     .order('start_time')
@@ -164,17 +168,17 @@ export async function updatePlaceTimeSlots(
   placeId: number, 
   timeSlotIds: Array<{ time_slot_id: number; priority: number }>
 ) {
-  const { supabase } = await requireAdmin(request)
+  const { user } = await requireAdmin(request)
   
   // 기존 연결 삭제
-  await supabase
+  await supabaseAdmin
     .from('place_time_slots')
     .delete()
     .eq('place_id', placeId)
 
   // 새로운 연결 추가
   if (timeSlotIds.length > 0) {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('place_time_slots')
       .insert(
         timeSlotIds.map(({ time_slot_id, priority }) => ({

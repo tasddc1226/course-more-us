@@ -9,6 +9,8 @@ import { groupPlacesByLocation } from './recommendation/grouping'
 import { calculateGroupScores } from './recommendation/scoring'
 import { ensureCategoryDiversity } from './recommendation/diversity'
 import { hasValidLocation, convertToRecommendationPlace } from './recommendation/utils'
+import { getUserPreferences } from './preferences.server'
+import type { UserPreferences } from '~/hooks/useUserPreferences'
 
 
 
@@ -61,8 +63,20 @@ export async function getRecommendations(
 export async function getAdvancedRecommendations(
   request: Request,
   params: AdvancedRecommendationRequest,
+  userId?: string,
 ): Promise<RecommendationResponse> {
   const startTime = Date.now()
+  const supabase = createSupabaseServerClient(request)
+
+  // 사용자 선호도 가져오기 (있는 경우)
+  let userPreferences: UserPreferences | null = null
+  if (userId) {
+    try {
+      userPreferences = await getUserPreferences(supabase, userId)
+    } catch (error) {
+      console.log('Could not fetch user preferences:', error)
+    }
+  }
 
   // STEP 1: 기본 필터링된 장소 조회
   const rawPlaces = await fetchFilteredPlaces(request, params)
@@ -72,8 +86,12 @@ export async function getAdvancedRecommendations(
   const convertedPlaces = rawPlaces.map(convertToRecommendationPlace)
   const locationGroups = groupPlacesByLocation(convertedPlaces)
 
-  // STEP 3: 그룹별 점수 계산
-  const scoredGroups = calculateGroupScores(locationGroups, params.timeSlotIds)
+  // STEP 3: 그룹별 점수 계산 (사용자 선호도 포함)
+  const scoredGroups = calculateGroupScores(
+    locationGroups, 
+    params.timeSlotIds, 
+    userPreferences || undefined
+  )
 
   // STEP 4: 카테고리 다양성 확보
   const diversePlaces = ensureCategoryDiversity(

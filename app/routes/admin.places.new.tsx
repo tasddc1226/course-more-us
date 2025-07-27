@@ -134,7 +134,7 @@ export default function NewPlace() {
   const [selectedRegionId, setSelectedRegionId] = useState<string | number | null>(null);
 
   // 카테고리 옵션 변환
-  const categoryOptions: DropdownOption[] = categories.map(category => ({
+  const categoryOptions: DropdownOption[] = categories.map((category: any) => ({
     value: String(category.id),
     label: category.name,
     icon: category.icon || '',
@@ -142,7 +142,7 @@ export default function NewPlace() {
   }));
 
   // 지역 옵션 변환
-  const regionOptions: DropdownOption[] = regions.map(region => ({
+  const regionOptions: DropdownOption[] = regions.map((region: any) => ({
     value: String(region.id),
     label: region.name,
     description: region.description || undefined
@@ -393,7 +393,7 @@ export default function NewPlace() {
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-900">추천 시간대</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {timeSlots.map((timeSlot) => (
+                {timeSlots.map((timeSlot: any) => (
                   <div key={timeSlot.id} className="space-y-2">
                     <label className="flex items-center space-x-2">
                       <input

@@ -15,6 +15,7 @@ import type { CourseGenerationResponse, CoursePlaceInfo } from "~/types/course";
 import { SearchBar } from "~/components/common";
 import { LoadingSkeleton } from "~/components/recommendation";
 import { CourseCard, CourseDetail } from "~/components/course";
+import { AdvancedFilterPanel, type AdvancedFilters } from "~/components/filters";
 import { useState } from "react";
 
 export const meta: MetaFunction = () => {
@@ -140,8 +141,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (userRequest) {
     // AI 검색 모드
-    console.log('🤖 AI 검색 요청 처리 시작');
-    console.log('사용자 요청:', userRequest);
+    // AI 검색 요청 처리 시작
     
     try {
       // 사용자가 입력한 지역과 시간대 사용
@@ -154,9 +154,7 @@ export async function action({ request }: ActionFunctionArgs) {
       const aiDate = date || new Date().toISOString().split('T')[0];
       const aiTimeSlotIds = timeSlotIds.length > 0 ? timeSlotIds : [3, 4, 5];
       
-      console.log('사용자 지역 ID:', aiRegionId);
-      console.log('사용자 날짜:', aiDate);
-      console.log('사용자 시간대 IDs:', aiTimeSlotIds);
+      // 사용자 설정값: 지역 ID, 날짜, 시간대 IDs
       
       const courseResult = await generateHybridDateCourses(request, {
         regionId: aiRegionId,
@@ -276,6 +274,10 @@ export default function Index() {
   
   // 선택된 코스 상태 관리
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  
+  // 고급 필터 상태 관리
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<AdvancedFilters | null>(null);
   
   // 지역 옵션 변환
   const regionOptions: DropdownOption[] = regions.map(region => ({
@@ -515,6 +517,16 @@ export default function Index() {
                 '맞춤 데이트 코스 추천받기 💕'
               )}
             </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterOpen(true)}
+              className="w-full"
+            >
+              🔍 고급 필터 설정
+            </Button>
           </Form>
           
           <p className="text-xs text-purple-500 mt-4">
@@ -630,7 +642,6 @@ export default function Index() {
                   return course ? (
                     <CourseDetail
                       course={course}
-                      showMap={true}
                       onClose={() => setSelectedCourse(null)}
                     />
                   ) : null;
@@ -640,6 +651,17 @@ export default function Index() {
           </div>
         ) : null}
       </main>
+      
+      {/* 고급 필터 패널 */}
+      <AdvancedFilterPanel
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApplyFilters={(filters) => {
+          setAppliedFilters(filters);
+          setIsFilterOpen(false);
+          // 필터 적용됨
+        }}
+      />
     </div>
   );
 }

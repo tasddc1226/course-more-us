@@ -769,6 +769,7 @@ async function convertSearchCourseToDomainCourse(
         id: -(i + 1), // 음수 ID로 AI 추천 장소임을 표시
         name: searchPlace.name,
         description: searchPlace.searchInfo?.recommendationReason || `AI가 추천한 ${searchPlace.category || '장소'}`,
+        address: '서울시 (AI 추천 장소)', // AI 추천 장소의 기본 주소
         latitude: 37.5665 + (Math.random() - 0.5) * 0.1, // 서울 중심 좌표 근처 랜덤 (실제로는 검색 API 사용)
         longitude: 126.9780 + (Math.random() - 0.5) * 0.1, // 서울 중심 좌표 근처 랜덤 (실제로는 검색 API 사용)
         rating: 4.5, // 기본 평점
@@ -902,7 +903,7 @@ function generateSearchCourseTags(
   
   // 장소 카테고리 기반 태그
   const categories = recommendedCourse.places?.map((p) => p.category).filter(Boolean) || [];
-  const uniqueCategories = [...new Set(categories)];
+  const uniqueCategories = [...new Set(categories)].filter((cat): cat is string => cat !== undefined);
   tags.push(...uniqueCategories);
   
   // 실시간 검색 태그
