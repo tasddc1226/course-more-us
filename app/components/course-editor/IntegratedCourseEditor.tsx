@@ -53,10 +53,13 @@ export default function IntegratedCourseEditor({
             region_id: 1,
             tags: ['카페', '조용한', '분위기좋은'],
             accessibility_features: ['wheelchair', 'parking'],
-            is_active: true,
             source: 'admin',
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            // RecommendedPlace specific fields
+            recommendationScore: 85,
+            groupSize: 1,
+            isPartnership: true,
+            sources: ['admin'],
           },
           timeSlot: {
             id: 1,
@@ -86,10 +89,13 @@ export default function IntegratedCourseEditor({
             region_id: 1,
             tags: ['전시', '문화', '실내'],
             accessibility_features: ['wheelchair', 'elevator'],
-            is_active: true,
             source: 'admin',
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            // RecommendedPlace specific fields
+            recommendationScore: 78,
+            groupSize: 1,
+            isPartnership: false,
+            sources: ['admin'],
           },
           timeSlot: {
             id: 2,
@@ -112,7 +118,7 @@ export default function IntegratedCourseEditor({
       // 예산 필터
       if (filters.budget.min > 0 || filters.budget.max < 500000) {
         filtered = filtered.filter(suggestion => {
-          const estimatedCost = suggestion.place.price_range * 15000;
+          const estimatedCost = (suggestion.place.price_range ?? 2) * 15000;
           return estimatedCost >= filters.budget.min && estimatedCost <= filters.budget.max;
         });
       }

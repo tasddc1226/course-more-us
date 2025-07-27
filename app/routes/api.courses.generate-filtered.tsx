@@ -53,7 +53,7 @@ export const action: ActionFunction = async ({ request }) => {
     return json({ 
       success: true, 
       courses: result.courses,
-      generationTime: result.generationTime
+      generationId: result.generationId
     });
   } catch (error) {
     console.error("Error generating filtered course:", error);

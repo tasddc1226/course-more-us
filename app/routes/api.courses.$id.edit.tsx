@@ -27,7 +27,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     }
     
     // 코스 유효성 검증
-    const validation = validateEditedCourse(editedCourse);
+    const validation = await validateEditedCourse(editedCourse);
     if (!validation.isValid) {
       return json({ 
         error: "코스 유효성 검증 실패", 
@@ -36,7 +36,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     }
     
     // 편집된 코스 저장
-    const success = await saveEditedCourse(request, courseId, user.id, editedCourse);
+    const success = await saveEditedCourse(request, courseId, editedCourse);
     
     if (!success) {
       return json({ error: "코스 저장에 실패했습니다." }, { status: 500 });

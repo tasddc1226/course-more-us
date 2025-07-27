@@ -10,6 +10,7 @@ export function convertToRecommendationPlace(supabasePlace: SupabasePlaceWithRel
   return {
     id: supabasePlace.id,
     name: supabasePlace.name,
+    address: supabasePlace.address,
     latitude: supabasePlace.latitude,
     longitude: supabasePlace.longitude,
     rating: supabasePlace.rating ?? undefined,
@@ -17,6 +18,7 @@ export function convertToRecommendationPlace(supabasePlace: SupabasePlaceWithRel
     source: supabasePlace.source,
     is_partnership: supabasePlace.is_partnership ?? undefined,
     category_id: supabasePlace.category_id, // 카테고리 다양성 알고리즘을 위해 필수
+    region_id: supabasePlace.region_id,
     place_time_slots: supabasePlace.place_time_slots
       .filter(pts => pts.time_slot_id !== null) // null인 time_slot_id 제외
       .map(pts => ({

@@ -11,12 +11,26 @@ export const loader: LoaderFunction = async ({ request }) => {
       .select('id, name')
       .order('name');
     
-    // 사용 가능한 태그 조회
-    const { data: tags } = await supabase
-      .from('tags')
-      .select('name')
-      .order('usage_count', { ascending: false })
-      .limit(50);
+    // 사용 가능한 태그 조회 (places 테이블의 tags 필드에서)
+    const { data: placesWithTags } = await supabase
+      .from('places')
+      .select('tags')
+      .not('tags', 'is', null)
+      .limit(1000);
+    
+    // 태그 집계
+    const tagCounts = new Map<string, number>();
+    placesWithTags?.forEach(place => {
+      place.tags?.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
+    });
+    
+    // 빈도순으로 정렬하여 상위 50개 추출
+    const tags = Array.from(tagCounts.entries())
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 50)
+      .map(([name]) => ({ name }));
     
     // 필터 옵션 구성
     const filterOptions = {
