@@ -233,10 +233,73 @@ app/components/
 ## 개발 일정 (5일)
 
 ### Day 1: 데이터베이스 및 백엔드 기초
-- [x] 데이터베이스 스키마 생성
-- [x] Supabase RLS 정책 설정
-- [x] 기본 API 엔드포인트 구현
-- [x] 타입 정의 및 생성
+
+#### 1. 데이터베이스 스키마 생성
+- [ ] user_preferences 테이블 생성
+  - [ ] 마이그레이션 파일 작성 (supabase/migrations/20250718_create_user_preferences.sql)
+  - [ ] 사용자별 카테고리 선호도 저장 구조 구현
+  - [ ] 가격대, 테마, 접근성 필드 정의
+- [ ] preference_learning_events 테이블 생성
+  - [ ] 마이그레이션 파일 작성 (supabase/migrations/20250718_create_preference_learning_events.sql)
+  - [ ] 이벤트 타입 정의 (like, dislike, visit, view, skip)
+  - [ ] 타겟 타입 정의 (place, course, category)
+- [ ] course_edit_history 테이블 생성
+  - [ ] 마이그레이션 파일 작성 (supabase/migrations/20250718_create_course_edit_history.sql)
+  - [ ] 원본/편집 코스 JSONB 구조 정의
+  - [ ] 변경사항 추적 필드 구현
+
+#### 2. Supabase RLS 정책 설정
+- [ ] user_preferences RLS 정책
+  - [ ] SELECT: 사용자는 자신의 선호도만 조회 가능
+  - [ ] INSERT: 사용자별 단일 레코드만 생성 가능
+  - [ ] UPDATE: 자신의 선호도만 수정 가능
+- [ ] preference_learning_events RLS 정책
+  - [ ] SELECT: 자신의 이벤트만 조회 가능
+  - [ ] INSERT: 인증된 사용자만 생성 가능
+  - [ ] DELETE: 불가 (이벤트는 삭제 불가)
+- [ ] course_edit_history RLS 정책
+  - [ ] SELECT: 자신이 편집한 이력만 조회 가능
+  - [ ] INSERT: 코스 소유자만 편집 이력 생성 가능
+
+#### 3. TypeScript 타입 정의
+- [ ] app/types/preferences.ts 파일 생성
+  - [ ] UserPreferenceProfile 인터페이스 정의
+  - [ ] PreferenceLearningEvent 인터페이스 정의
+  - [ ] CourseEditHistory 인터페이스 정의
+  - [ ] TimeSlot, ThemePreference, AccessibilityNeeds 타입 정의
+- [ ] Supabase 자동 생성 타입 업데이트
+  - [ ] npm run types:generate 실행
+  - [ ] 생성된 타입 검증
+
+#### 4. 서버 함수 구현
+- [ ] app/lib/preferences.server.ts 생성
+  - [ ] createPreferenceLearningEvent 함수 구현
+  - [ ] getUserPreferenceProfile 함수 구현
+  - [ ] updateUserPreferences 함수 구현
+  - [ ] calculatePreferenceScore 헬퍼 함수 구현
+- [ ] app/lib/course-editor.server.ts 생성
+  - [ ] saveCourseEditHistory 함수 구현
+  - [ ] getCourseEditHistory 함수 구현
+  - [ ] calculateEditDiff 헬퍼 함수 구현
+
+#### 5. API 라우트 구현
+- [ ] app/routes/api.preferences.learn.tsx
+  - [ ] POST 핸들러 구현
+  - [ ] 요청 유효성 검증
+  - [ ] 에러 처리
+- [ ] app/routes/api.preferences.profile.tsx
+  - [ ] GET 핸들러 구현
+  - [ ] 프로필 캐싱 로직
+- [ ] app/routes/api.preferences.update.tsx
+  - [ ] PUT 핸들러 구현
+  - [ ] 부분 업데이트 지원
+
+#### 6. 테스트 및 검증
+- [ ] 데이터베이스 마이그레이션 실행 및 검증
+- [ ] RLS 정책 테스트 (다른 사용자 데이터 접근 차단 확인)
+- [ ] API 엔드포인트 수동 테스트
+- [ ] TypeScript 타입 체크 (npm run typecheck)
+- [ ] 린트 검사 (npm run lint)
 
 ### Day 2: 선호도 학습 시스템
 - [x] PreferenceCollector 컴포넌트

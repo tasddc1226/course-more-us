@@ -43,4 +43,18 @@ export async function getUser(request: Request) {
   } = await supabase.auth.getUser()
 
   return user || null
+}
+
+export async function requireUser(request: Request) {
+  const result = await requireAuth(request)
+  
+  if (result.response) {
+    throw result.response
+  }
+  
+  if (!result.user) {
+    throw redirect(ROUTES.LOGIN)
+  }
+  
+  return result.user
 } 
